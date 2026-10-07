@@ -539,6 +539,10 @@ TEST("mrkdwn: bare URLs become links, trimmed of sentence punctuation") {
     CHECK_STR(r.entities[1].data, "https://x.test/p");
     // Not inside code blocks, tokens or bare schemes.
     CHECK(mrkdwn::parse("```https://x.test```").entities.size() == 1);
+    // Slack wraps a URL in <…> even inside code: shown without the brackets.
+    CHECK_STR(mrkdwn::parse("```curl <https://x.test/p>```").text, "curl https://x.test/p");
+    CHECK_STR(mrkdwn::parse("`<https://x.test|x.test>`").text, "x.test");
+    CHECK_STR(mrkdwn::parse("```a &lt;b&gt; <@U1> <x>```").text, "a <b> <@U1> <x>");
     CHECK(mrkdwn::parse("<https://x.test|https://y.test>").entities.size() == 1);
     CHECK(mrkdwn::parse("just https:// here").entities.empty());
     // A URL inside bold nests after the Bold span.

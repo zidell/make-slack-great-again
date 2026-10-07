@@ -434,6 +434,31 @@ size_t quoteMarkLen(std::string_view s, size_t pos) {
     return s.substr(pos, 4) == "&gt;" ? 4 : 0;
 }
 
+// Code text as shown: entities decoded, and the <url> / <url|label> Slack
+// wraps around a URL even inside code (it links text-only posts server-side)
+// shown as the label alone — a typed '<' arrives as &lt;, never raw.
+std::string decodeCode(std::string_view s) {
+    std::string out;
+    size_t      i = 0;
+    while (i < s.size()) {
+        const size_t lt = s.find('<', i);
+        const size_t gt = lt == std::string_view::npos ? lt : s.find('>', lt + 1);
+        if (gt == std::string_view::npos) {
+            out += decodeEntities(s.substr(i));
+            break;
+        }
+        out += decodeEntities(s.substr(i, lt - i));
+        const std::string_view inner = s.substr(lt + 1, gt - lt - 1);
+        const size_t           bar   = inner.find('|');
+        if (looksLikeUrl(inner.substr(0, bar)))
+            out += decodeEntities(bar == std::string_view::npos ? inner : inner.substr(bar + 1));
+        else
+            out += decodeEntities(s.substr(lt, gt + 1 - lt));
+        i = gt + 1;
+    }
+    return out;
+}
+
 // "No closer from `from` to the end of its line" — a closer search that
 // failed answers every later opener on that line too (a line of " _a_b"
 // tokens or lone '*'s is then scanned once, not once per opener).
@@ -446,7 +471,7 @@ struct NoCloser {
     }
 };
 
-Rich parseImpl(std::string_view src, int depth, bool inQuote) {
+Rich parseImpl(std::string_view src, int depth, bool inQuote, bool literalCode) {
     Builder          b;
     size_t           i    = 0;
     const size_t     n    = src.size();
@@ -479,7 +504,10 @@ Rich parseImpl(std::string_view src, int depth, bool inQuote) {
             const size_t closePos = findCodeFenceClose(src, contentStart);
             if (closePos != npos) {
                 const uint32_t start = uint32_t(b.text.size());
-                b.text += decodeEntities(src.substr(contentStart, closePos - 3 - contentStart));
+                b.text +=
+                    literalCode
+                        ? decodeEntities(src.substr(contentStart, closePos - 3 - contentStart))
+                        : decodeCode(src.substr(contentStart, closePos - 3 - contentStart));
                 b.addSpan(Kind::Pre, start);
                 i = closePos;
                 continue;
@@ -491,7 +519,8 @@ Rich parseImpl(std::string_view src, int depth, bool inQuote) {
             const size_t end = close(none[0], i + 1, findClose(src, i + 1, '`'));
             if (end != npos) {
                 const uint32_t start = uint32_t(b.text.size());
-                b.text += decodeEntities(src.substr(i + 1, end - 1 - (i + 1)));
+                b.text += literalCode ? decodeEntities(src.substr(i + 1, end - 1 - (i + 1)))
+                                      : decodeCode(src.substr(i + 1, end - 1 - (i + 1)));
                 b.addSpan(Kind::Code, start);
                 i = end;
                 continue;
@@ -503,7 +532,8 @@ Rich parseImpl(std::string_view src, int depth, bool inQuote) {
             const size_t end = close(none[1], i + 1, findClose(src, i + 1, '*'));
             if (end != npos) {
                 b.appendNested(
-                    Kind::Bold, parseImpl(src.substr(i + 1, end - 1 - (i + 1)), depth + 1, inQuote)
+                    Kind::Bold,
+                    parseImpl(src.substr(i + 1, end - 1 - (i + 1)), depth + 1, inQuote, literalCode)
                 );
                 i = end;
                 continue;
@@ -517,7 +547,7 @@ Rich parseImpl(std::string_view src, int depth, bool inQuote) {
             if (end != npos) {
                 b.appendNested(
                     Kind::Underline,
-                    parseImpl(src.substr(i + 2, end - 2 - (i + 2)), depth + 1, inQuote)
+                    parseImpl(src.substr(i + 2, end - 2 - (i + 2)), depth + 1, inQuote, literalCode)
                 );
                 i = end;
                 continue;
@@ -530,7 +560,7 @@ Rich parseImpl(std::string_view src, int depth, bool inQuote) {
             if (end != npos) {
                 b.appendNested(
                     Kind::Italic,
-                    parseImpl(src.substr(i + 1, end - 1 - (i + 1)), depth + 1, inQuote)
+                    parseImpl(src.substr(i + 1, end - 1 - (i + 1)), depth + 1, inQuote, literalCode)
                 );
                 i = end;
                 continue;
@@ -543,7 +573,7 @@ Rich parseImpl(std::string_view src, int depth, bool inQuote) {
             if (end != npos) {
                 b.appendNested(
                     Kind::Strike,
-                    parseImpl(src.substr(i + 1, end - 1 - (i + 1)), depth + 1, inQuote)
+                    parseImpl(src.substr(i + 1, end - 1 - (i + 1)), depth + 1, inQuote, literalCode)
                 );
                 i = end;
                 continue;
@@ -599,7 +629,7 @@ Rich parseImpl(std::string_view src, int depth, bool inQuote) {
                 if (quoteMarkLen(src, i) == 0)
                     break;
             }
-            b.appendNested(Kind::Quote, parseImpl(quoted, depth + 1, true));
+            b.appendNested(Kind::Quote, parseImpl(quoted, depth + 1, true, literalCode));
             b.text += '\n'; // the line break after the quote
             continue;
         }
@@ -737,8 +767,8 @@ std::string decodeEntities(std::string_view s) {
     return out;
 }
 
-Rich parse(std::string_view src) {
-    Rich r = parseImpl(src, 0, false);
+Rich parse(std::string_view src, bool literalCode) {
+    Rich r = parseImpl(src, 0, false, literalCode);
     linkifyBareUrls(r);
     return r;
 }

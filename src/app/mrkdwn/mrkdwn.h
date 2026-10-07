@@ -56,7 +56,9 @@ struct Rich {
 
 // Full mrkdwn: marks, tokens, emoji, quotes, code, entities; bare http(s)
 // URLs in plain text (and inside `code`) become Link entities too.
-Rich        parse(std::string_view mrkdwn);
+// literalCode keeps <…> inside code as written (composer text, where '<' is
+// raw); otherwise a URL token Slack put there shows as its label.
+Rich        parse(std::string_view mrkdwn, bool literalCode = false);
 // Only <…> tokens and :emoji: — for already-structured runs (rich_text "text"
 // elements) whose emphasis comes from a style object. *_~` stay literal and a
 // bare "<word>" without a URL scheme stays literal.

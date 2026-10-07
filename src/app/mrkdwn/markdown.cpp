@@ -436,7 +436,7 @@ void writeElements(json::Writer &w, const std::vector<Element> &els) {
 
 // A rich_text_section / rich_text_quote of one chunk of converted mrkdwn.
 void writeSection(json::Writer &w, const char *type, const std::string &mrkdwn) {
-    const Rich           r = parse(mrkdwn);
+    const Rich           r = parse(mrkdwn, true);
     std::vector<Element> els;
     size_t               k = 0;
     walk(r, k, 0, uint32_t(r.text.size()), 0, els);
@@ -481,7 +481,7 @@ void writeList(json::Writer &w, const std::vector<Item> &items) {
 } // namespace
 
 std::string richTextElements(std::string_view mrkdwnText) {
-    const Rich           r = parse(mrkdwnText);
+    const Rich           r = parse(mrkdwnText, true);
     std::vector<Element> els;
     size_t               k = 0;
     walk(r, k, 0, uint32_t(r.text.size()), 0, els);
