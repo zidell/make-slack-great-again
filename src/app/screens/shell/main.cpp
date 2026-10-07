@@ -28,6 +28,7 @@
 #include "app/model/backend_proxy.h"
 #include "app/model/null_backend.h"
 #ifdef MSGA_SELF_UPDATE
+#include "app/update/fork_release.h"
 #include "app/update/updater.h"
 #endif
 #include "base/file.h"
@@ -312,7 +313,7 @@ int main(int argc, char **argv) {
     net::Client         transfers(pa);
 #ifdef MSGA_SELF_UPDATE
     // The update check (msga.app's manifest; the shell drives it).
-    update::Updater updater(pa, transfers, MSGA_VERSION);
+    update::Updater updater(pa, transfers, forkrel::version(MSGA_VERSION));
 #endif
     // Avatars, files, emoji and previews from URLs, cached on disk.
     screens::RemoteImages remote(pa, &transfers, screens::RemoteImages::defaultDir(pa));
@@ -408,7 +409,8 @@ int main(int argc, char **argv) {
         if (!str::startsWith(a, "msga://"))
             sh.restartArgs.push_back(a);
 #ifdef MSGA_SELF_UPDATE
-    if (!demoMode)
+    // The fork's releases, not msga.app's (fork_release.h).
+    if (!demoMode && forkrel::useReleases(updater))
         sh.setUpdater(&updater);
 #endif
 #ifdef MSGA_DEMO

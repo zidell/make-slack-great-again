@@ -9,6 +9,7 @@
 #include "app/llm/wire.h"
 #include "app/screens/common/remote_images.h"
 #include "app/spell/spell.h"
+#include "app/update/fork_release.h"
 #ifdef MSGA_SELF_UPDATE
 #include "app/update/updater.h"
 #endif
@@ -692,7 +693,9 @@ void SettingsDialog::buildSystem() {
     {
         body(
             _content,
-            arg(tr("Version %1, built %2"), str::number(MSGA_VERSION), MSGA_BUILD_TIMESTAMP),
+            arg(tr("Version %1, built %2"),
+                forkrel::label(forkrel::version(MSGA_VERSION)),
+                MSGA_BUILD_TIMESTAMP),
             C::FormTextMuted
         );
 #ifdef MSGA_SELF_UPDATE // without it a package manager updates msga
@@ -750,7 +753,7 @@ void SettingsDialog::buildSystem() {
                     status(
                         false,
                         arg(tr("Version %1 available \xE2\x80\x94 downloading\xE2\x80\xA6"),
-                            str::number(int64_t(e.version)))
+                            forkrel::label(e.version))
                     );
                     break;
                 case K::Progress:

@@ -1,7 +1,8 @@
 # msga 로컬 작업 지침
 
 - Windows에서는 `scripts/build.ps1`로 빌드하고 `build/msga.exe`를 실행한다. 실행 중인 앱을 정상 종료한 뒤 재빌드·재실행하고, 프로세스의 실행 경로를 확인한다.
-- Windows 로컬 수정본은 `%APPDATA%\msga\MSGA\settings.json`의 `autoUpdates`를 `false`로 유지한다. 자동 업데이트는 실행 중인 `build/msga.exe`를 공식 배포본으로 교체하므로 수정 사항이 사라진다. 이미 교체됐다면 앱을 정상 종료하고 해당 실행 파일만 제거한 뒤 재빌드해 강제로 다시 링크한다. 빌드·실행 후 자동 업데이트 확인 시점(시작 후 5초)을 지나서도 실행 파일의 해시가 유지되는지 확인한다.
+- 업데이트는 원본(msga.app)이 아니라 포크의 GitHub Releases(`zidell/make-slack-great-again`, latest)를 따른다(`src/app/update/fork_release.h`). 버전은 `<원본 MSGA_VERSION>.<N>`(태그 `v39.2`, 업데이터가 비교하는 수는 `39*100+2`)이고, 원본 버전이 오르면 N은 1부터 다시 센다. 업데이트 확인은 릴리스 빌드(`MSGA_UPDATES=ON`)만 한다. 로컬 빌드(`build.sh`/`build.ps1`)는 `<버전>.0`이고 확인하지 않는다(설정에는 "Update checks not available."). 게시된 빌드가 로컬 수정본을 덮어쓰지 않게 하려는 것이다. 이미 공식 배포본으로 교체됐다면 앱을 정상 종료하고 해당 실행 파일만 제거한 뒤 재빌드해 강제로 다시 링크한다.
+- 포크 릴리스: master를 push한 뒤 Mac에서 `scripts/fork-release.sh`를 실행하고, 같은 커밋을 받은 Windows에서 `scripts\fork-release.ps1`를 실행한다. 먼저 실행한 쪽이 태그와 릴리스를 만들고, 나중 쪽은 같은 릴리스에 자기 파일을 올린다. 올라가는 파일은 `msga-macos-arm64.dmg`/`.manifest`와 `msga-windows-x86_64.exe`/`.manifest`이고, 업데이터는 이 이름 그대로 받는다. Windows를 올리기 전까지는 Windows 사용자의 확인이 404로 조용히 실패한다. macOS DMG는 Developer ID로 서명만 하고 공증은 하지 않는다. 그래서 브라우저로 받은 첫 설치는 "그래도 열기"를 한 번 거쳐야 하지만, 앱이 직접 받은 업데이트에는 quarantine이 붙지 않는다.
 
 - 이 체크아웃은 사용자가 실제로 쓰는 msga 빌드본이다. 소스를 수정하면 매번 끝에 재빌드하고 빌드본을 다시 실행한다.
   1. `./scripts/build.sh` (테스트를 고쳤거나 추가했으면 `--test`)
@@ -11,7 +12,7 @@
 - 이 Mac은 시스템 언어가 한국어라 `settings_tests`의 로캘 의존 검사 2건(AI 언어 "English", `dateLanguage() == "en"`)이 원본 코드에서도 실패한다. 이 2건 외의 실패만 회귀로 본다.
 - macOS 서명: `credentials.cmake`(gitignored)의 `MSGA_CODESIGN_IDENTITY`에 Developer ID 인증서를 지정해 둔다. ad-hoc(`-`)으로 되돌리면 서명 요건이 빌드마다 바뀌는 cdhash가 되어 키체인이 빌드할 때마다 다시 묻는다.
 - 원격: `origin` = 포크(`zidell/make-slack-great-again`), `upstream` = 원본(`punarinta/make-slack-great-again`). 작업은 `master`에 커밋해 `origin`에 push한다.
-- 원본 업데이트 반영: `git fetch upstream` → `git rebase upstream/master`(충돌은 우리 기능을 살려 해결) → `python3 src/tools/i18n.py update`로 번역 테이블 재생성(바뀌었으면 포크 맨 끝의 i18n 커밋에 `--fixup`) → `./scripts/build.sh --test`로 확인 → `git push --force-with-lease origin master` → 재빌드·재실행. 원본의 `version.cmake`가 올라가면 빌드본 버전도 따라 올라가 업데이트 알림이 사라진다. 원본 배포(버전 증가)마다 바로 반영해 한 번에 쌓이는 충돌을 작게 유지한다.
+- 원본 업데이트 반영: `git fetch upstream` → `git rebase upstream/master`(충돌은 우리 기능을 살려 해결) → `python3 src/tools/i18n.py update`로 번역 테이블 재생성(바뀌었으면 포크 맨 끝의 i18n 커밋에 `--fixup`) → `./scripts/build.sh --test`로 확인 → `git push --force-with-lease origin master` → 재빌드·재실행. 반영은 사용자가 요청할 때 한다(빌드본은 업데이트 알림을 띄우지 않는다). 반영 간격이 길수록 충돌이 쌓이니, 반영할 때는 그동안의 원본 커밋을 훑어 우리 기능의 전제(이벤트 경로·폴링 주기 등)를 바꾼 것이 있는지 먼저 본다.
 - 원본 반영 충돌을 줄이는 구조(원본을 아예 안 건드릴 수는 없으니, 건드리는 면적을 줄인다):
   - 포크 커밋은 기능당 하나다. 기존 기능을 고치면 새 커밋을 쌓지 말고 `git commit --fixup=<그 기능 커밋>` 후 `GIT_SEQUENCE_EDITOR=true git rebase -i --autosquash upstream/master`로 합친다(rebase 때 영역마다 충돌을 한 번만 푼다).
   - **포크 기능은 원본 코드를 고쳐서 만들지 않고, 우리 쪽 파일에서 원본에 끼워 넣는(오버라이드) 방식으로 만든다.** 새 기능을 설계할 때 먼저 "원본을 몇 줄 건드리는가"를 기준으로 방식을 고른다.

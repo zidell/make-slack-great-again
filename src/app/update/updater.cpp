@@ -1,5 +1,7 @@
 #include "app/update/updater.h"
 
+#include "app/update/fork_release.h"
+
 #include "app/model/jobs.h"
 #include "base/crypto.h"
 #include "base/file.h"
@@ -371,7 +373,7 @@ void Updater::fetch(bool silent) {
 void Updater::download(int version, std::string sha256) {
     _busy = true;
     const int job =
-        model::jobs().begin(arg(tr("Downloading %1"), "msga " + str::number(int64_t(version))));
+        model::jobs().begin(arg(tr("Downloading %1"), "msga " + forkrel::label(version)));
     net::Request req;
     req.url                   = _assetUrl;
     req.timeoutMs             = kDownloadTimeoutMs;

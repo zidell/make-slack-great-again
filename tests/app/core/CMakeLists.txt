@@ -11,6 +11,9 @@ endif()
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     list(APPEND core_suites local_import)
 endif()
+if(TARGET msga_app_update) # the fork's own (fork_release.h), on the updater
+    list(APPEND core_suites fork_release)
+endif()
 target_sources(msga_app_tests PRIVATE ../../support/fake_slack_server.cpp)
 target_link_libraries(msga_app_tests PRIVATE msga_app_fake msga_app_slack)
 target_compile_definitions(msga_app_tests PRIVATE

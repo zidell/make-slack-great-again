@@ -195,6 +195,7 @@ endif()
 # MSGA_VERSION: the release number (the update check, the bundle and .exe
 # version resources).
 include("${CMAKE_CURRENT_SOURCE_DIR}/version.cmake")
+include("${CMAKE_CURRENT_SOURCE_DIR}/fork.cmake")
 
 # The build's Slack app keys (gitignored; see credentials.cmake.example).
 include("${CMAKE_CURRENT_SOURCE_DIR}/credentials.cmake" OPTIONAL)
