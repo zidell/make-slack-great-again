@@ -43,7 +43,10 @@ struct Settings {
     // ── Appearance ──────────────────────────────────────────────────────────
     int                      paletteLight = 0, paletteDark = 1; // ui::Palette per content mode
     ui::CustomPalette        custom;
-    int                      fontSize = 1; // 0 small, 1 medium, 2 large (App::setUserTextScale)
+    // The body text size in px (App::setUserTextScale, relative to Body's
+    // 15 px); Settings and Cmd/Ctrl +/-/0 change it.
+    static constexpr int     kFontPxMin = 13, kFontPxMax = 18, kFontPxDefault = 15;
+    int                      fontSize = kFontPxDefault;
     std::string              language = "system"; // "system", "en", "ja"
     bool                     use24h = false, threadsInline = false, linkPreviews = true;
     // use24h came from the file; without it the clock follows the language
@@ -109,12 +112,12 @@ struct Settings {
     std::vector<RecentDir>                           claudeRecentDirs;
     std::vector<std::pair<std::string, std::string>> claudeTeammateDirs; // role id → folder
 
-    float       fontScale() const { return fontSize == 0 ? 0.9f : fontSize == 2 ? 1.15f : 1.f; }
+    float              fontScale() const { return float(fontSize) / float(kFontPxDefault); }
     // The palettes and custom palette into the toolkit (ui::setPalette …).
-    void        applyPalettes() const;
-    bool        zenMode(std::string_view workspaceKey) const;
-    void        setZenMode(const std::string &workspaceKey, bool on);
-    AiProvider *provider(std::string_view id);
+    void               applyPalettes() const;
+    bool               zenMode(std::string_view workspaceKey) const;
+    void               setZenMode(const std::string &workspaceKey, bool on);
+    AiProvider        *provider(std::string_view id);
     const AiProvider  *provider(std::string_view id) const;
     // The language AI features answer in: the one picked, else the app
     // language's — the OS locale's language for "system", so "sv" for a

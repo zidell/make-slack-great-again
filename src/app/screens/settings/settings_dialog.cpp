@@ -57,7 +57,7 @@ bool shell::Settings::*const kAppearanceBools[] = {
     &shell::Settings::animateMedia,
 };
 int shell::Settings::*const kAppearanceInts[] = {
-    &shell::Settings::fontSize, &shell::Settings::relevantDays, &shell::Settings::names
+    &shell::Settings::relevantDays, &shell::Settings::names
 };
 bool shell::Settings::*const kNotifyBools[] = {
     &shell::Settings::notifications,
@@ -413,7 +413,24 @@ void SettingsDialog::buildAppearance() {
     buildCustomEditor();
 
     heading(_content, tr("Font size"));
-    radios(_content, {tr("Small"), tr("Medium (default)"), tr("Large")}, &d.fontSize);
+    {
+        auto *g = group(_content);
+        auto *r = row(g);
+        body(r, tr("Text size"));
+        auto *size = r->add<SpinBox>(
+            d.fontSize, shell::Settings::kFontPxMin, shell::Settings::kFontPxMax, tr(" px")
+        );
+        size->style().width(90);
+        // Applies at once, like the color mode (and like Cmd/Ctrl +/-).
+        size->onChange = [this](int v) {
+            _s.fontSize = _draft.fontSize = v;
+            _ctx.app.setUserTextScale(_s.fontScale());
+            changed();
+        };
+        caption(
+            g, tr("15 px is the default. Cmd/Ctrl + and - change it at any time, 0 resets it.")
+        );
+    }
 
     heading(_content, tr("Language"));
     {
@@ -685,7 +702,6 @@ void SettingsDialog::saveAppearance() {
         _s.*f = _draft.*f;
     _s.language       = _draft.language;
     _s.spellLanguages = _draft.spellLanguages;
-    _ctx.app.setUserTextScale(_s.fontScale());
     changed();
     close();
 }

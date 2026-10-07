@@ -260,6 +260,9 @@ public:
     // UI thread (a burst of changes is one write; a warning when it fails).
     // saveState writes what is still waiting at once.
     void                        saveSettingsSoon();
+    // Cmd/Ctrl +/-/0: the text size in px (clamped to the Settings range),
+    // applied at once and saved.
+    void                        setTextSize(int px);
     // Shows and raises the window, un-hiding and un-minimising it (tray
     // clicks, notification clicks, second instances).
     void                        restore(const std::string &activationToken = {});

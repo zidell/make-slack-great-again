@@ -60,7 +60,7 @@ const struct {
     {"threadWidth", &Settings::threadWidth, 100, 4000},
     {"paletteLight", &Settings::paletteLight, 0, int(ui::Palette::Count) - 1},
     {"paletteDark", &Settings::paletteDark, 0, int(ui::Palette::Count) - 1},
-    {"fontSize", &Settings::fontSize, 0, 2},
+    {"fontPx", &Settings::fontSize, Settings::kFontPxMin, Settings::kFontPxMax},
     {"relevantDays", &Settings::relevantDays, 1, 365},
     {"names", &Settings::names, 0, 2},
     {"notifyLevel", &Settings::notifyLevel, 0, 1},
@@ -214,6 +214,11 @@ void fromJson(const json::Value r, Settings &s) {
         s.*b.field = r[b.key].boolean(s.*b.field);
     for (const auto &i : kInts)
         s.*i.field = int(std::clamp<int64_t>(r[i.key].integer(s.*i.field), i.min, i.max));
+    // Files from before the px sizes: fontSize 0 small, 1 medium, 2 large.
+    if (!r.has("fontPx") && r.has("fontSize")) {
+        const int64_t old = r["fontSize"].integer(1);
+        s.fontSize        = old == 0 ? 14 : old == 2 ? 17 : Settings::kFontPxDefault;
+    }
     for (const auto &k : kStrings)
         if (r.has(k.key))
             s.*k.field = std::string(r[k.key].str());

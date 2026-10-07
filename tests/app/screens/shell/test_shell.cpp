@@ -1666,6 +1666,40 @@ TEST("workspace rail: a tile per workspace; a click or its tray item switches") 
     CHECK_STR(switched[1], kClaudeKey);
 }
 
+TEST("workspace rail: Cmd/Ctrl+1-9 switch to the rail's workspaces in order") {
+    Harness h;
+    twoWorkspaces(h);
+    std::vector<std::string> switched;
+    h.sh->onSwitchWorkspace = [&](const std::string &k) { switched.push_back(k); };
+    const plat::Key mod =
+        plat::primaryMod() == plat::ModSuper ? plat::Key::SuperLeft : plat::Key::ControlLeft;
+    auto chord = [&](plat::Key k) {
+        app().platform().testHooks()->injectKey(h.win->native(), mod, true);
+        app().platform().testHooks()->injectKey(h.win->native(), k, true);
+        app().platform().testHooks()->injectKey(h.win->native(), k, false);
+        app().platform().testHooks()->injectKey(h.win->native(), mod, false);
+        pump(2);
+    };
+    chord(plat::Key::Num1); // the open one: nothing
+    chord(plat::Key::Num3); // no third workspace
+    CHECK(switched.empty());
+    chord(plat::Key::Num2);
+    REQUIRE(switched.size() == 1);
+    CHECK_STR(switched[0], kClaudeKey);
+
+    // Cmd/Ctrl +/-/0: the text size, a px at a time, within 13-18.
+    CHECK(h.settings.fontSize == 15);
+    chord(plat::Key::Equal);
+    CHECK(h.settings.fontSize == 16);
+    CHECK(app().userTextScale() > 1.f);
+    for (int i = 0; i < 9; ++i)
+        chord(plat::Key::Minus);
+    CHECK(h.settings.fontSize == 13);
+    chord(plat::Key::Num0);
+    CHECK(h.settings.fontSize == 15);
+    CHECK(app().userTextScale() == 1.f);
+}
+
 TEST("workspace rail: dragging a tile reorders the rail, without a click") {
     Harness h;
     twoWorkspaces(h);

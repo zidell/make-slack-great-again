@@ -17,6 +17,14 @@ const Def kDefs[] = {
     {Id::QuickSwitch, Scope::Window, true, N_("Jump to a conversation"), {{K::K, Ctrl}, kNone}},
     // Find: Ctrl+F on every platform.
     {Id::SearchMessages, Scope::Window, true, N_("Search messages"), {{K::F, Ctrl}, kNone}},
+    // "+" is Shift+= on most layouts; plain Ctrl+= works too.
+    {Id::TextBigger,
+     Scope::Window,
+     true,
+     N_("Larger text"),
+     {{K::Equal, Ctrl}, {K::Equal, Ctrl | Shift}}},
+    {Id::TextSmaller, Scope::Window, true, N_("Smaller text"), {{K::Minus, Ctrl}, kNone}},
+    {Id::TextReset, Scope::Window, true, N_("Default text size"), {{K::Num0, Ctrl}, kNone}},
     // The keys of the next two are replaced by bindings() (the Ctrl+Enter option).
     {Id::SendMessage, Scope::Documented, true, N_("Send message"), {{K::Enter, 0}, kNone}},
     {Id::NewLine, Scope::Documented, true, N_("New line in message"), {{K::Enter, Shift}, kNone}},
@@ -85,6 +93,11 @@ const Def kDefs[] = {
      false,
      N_("Remove idle session from msga"),
      {{K::Delete, Shift}, kNone}},
+    {Id::SwitchWorkspace,
+     Scope::Documented,
+     false,
+     N_("Switch to workspace 1-9"),
+     {{K::Num1, Ctrl}, kNone}},
 };
 static_assert(sizeof(kDefs) / sizeof(kDefs[0]) == size_t(Id::Count), "a row per Id");
 
@@ -112,6 +125,10 @@ std::string portableName(plat::Key k) {
     switch (k) {
     case K::Comma:
         return ",";
+    case K::Equal:
+        return "+";
+    case K::Minus:
+        return "-";
     case K::Backslash:
         return "\\";
     case K::Space:

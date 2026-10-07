@@ -32,6 +32,9 @@ enum class Id : uint8_t {
     SearchMessages,
     QuickSwitch,
     OpenSettings,
+    TextBigger,
+    TextSmaller,
+    TextReset,
     // ── Composer scope ──────────────────────────────────────────────────────
     Bold,
     Italic,
@@ -59,6 +62,9 @@ enum class Id : uint8_t {
     // Filtered window-wide ahead of the focused view (the composer keeps focus
     // and would take Shift+Del as a delete).
     RemoveIdleSession,
+    // Ctrl+1 … Ctrl+9: the rail's workspaces, top to bottom (installed per
+    // digit by the shell; the row stands for all nine).
+    SwitchWorkspace,
     Count
 };
 

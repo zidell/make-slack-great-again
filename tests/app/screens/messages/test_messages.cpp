@@ -782,6 +782,33 @@ TEST("rows: a reaction keeps the row's body as built; an edit or a name rebuilds
     );
 }
 
+TEST("rows: a new text size re-binds the rows at the new size") {
+    Env                         e(false);
+    const int64_t               t0 = base::nowSecs() - 600;
+    std::vector<model::Message> ms;
+    for (int i = 0; i < 5; ++i)
+        ms.push_back(msg(model::UserRef(i % 2), t0 + i * 61, "plain words"));
+    const ConvRef c = addConv(e.store, std::move(ms));
+    e.list->showConversation(c);
+    pump(8);
+    const Ts ts = e.list->items().back().ts;
+    REQUIRE(e.row(ts) != nullptr);
+    const float h     = e.row(ts)->windowRect().h;
+    const int   binds = e.list->rowBinds();
+    app().setUserTextScale(18.f / 15.f);
+    pump(8);
+    CHECK(e.list->rowBinds() > binds);
+    REQUIRE(e.row(ts) != nullptr);
+    CHECK(e.row(ts)->windowRect().h > h);
+    // The same size again (a theme change restyles too): nothing re-bound.
+    const int again = e.list->rowBinds();
+    app().restyle();
+    pump(8);
+    CHECK(e.list->rowBinds() == again);
+    app().setUserTextScale(1.f);
+    pump(8);
+}
+
 TEST("dates: separators say Today, Yesterday, then the date") {
     Env                   e(false);
     const int64_t         now = base::nowSecs();

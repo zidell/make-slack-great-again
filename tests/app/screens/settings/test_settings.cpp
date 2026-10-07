@@ -197,7 +197,8 @@ TEST("settings: every value survives the file, which is owner-only") {
     const shell::Settings def = shell::Settings::load(path);
     CHECK(def.closeToTray);
     CHECK(def.notifications);
-    CHECK(def.fontSize == 1);
+    CHECK(def.fontSize == 15);
+    CHECK(def.fontScale() == 1.f);
     CHECK(def.paletteLight == int(ui::Palette::Purple));
     CHECK(def.paletteDark == int(ui::Palette::Charcoal));
     CHECK(def.relevantDays == 14);
@@ -212,7 +213,7 @@ TEST("settings: every value survives the file, which is owner-only") {
     s.custom.primary             = 0xff123456;
     s.custom.brightness          = 3;
     s.custom.sidebarInverted     = false;
-    s.fontSize                   = 2;
+    s.fontSize                   = 17;
     s.language                   = "ja";
     s.use24h                     = true;
     s.threadsInline              = true;
@@ -250,7 +251,7 @@ TEST("settings: every value survives the file, which is owner-only") {
     CHECK(r.custom.primary == 0xff123456u);
     CHECK(r.custom.brightness == 3);
     CHECK_FALSE(r.custom.sidebarInverted);
-    CHECK(r.fontSize == 2);
+    CHECK(r.fontSize == 17);
     CHECK(r.fontScale() > 1.1f);
     CHECK_STR(r.language, "ja");
     CHECK(r.use24h && r.threadsInline && r.ctrlEnterSends && r.unreadsOnly);
@@ -490,12 +491,46 @@ TEST("settings: color mode and theme cards apply and persist at once") {
     file::remove(path);
 }
 
+TEST("settings: the text size applies at once, in px from 13 to 18") {
+    const std::string path = testPath();
+    file::remove(path);
+    Harness         h(path);
+    SettingsDialog &d    = h.open();
+    auto           *size = static_cast<ui::SpinBox *>(d.find("15 px"));
+    REQUIRE(size != nullptr);
+    size->focus();
+    h.key(plat::Key::Up);
+    h.key(plat::Key::Up);
+    CHECK(size->value() == 17);
+    CHECK(h.settings.fontSize == 17);
+    CHECK(app().userTextScale() > 1.1f);
+    for (int i = 0; i < 6; ++i)
+        h.key(plat::Key::Up);
+    CHECK(h.settings.fontSize == 18);
+    for (int i = 0; i < 9; ++i)
+        h.key(plat::Key::Down);
+    CHECK(h.settings.fontSize == 13);
+    CHECK(app().userTextScale() < 0.9f);
+    app().setUserTextScale(1.f);
+    file::remove(path);
+}
+
+TEST("settings: a file from before the px sizes keeps its size") {
+    const std::string path = testPath();
+    REQUIRE(file::writeAtomic(path, R"({"fontSize": 2})"));
+    CHECK(shell::Settings::load(path).fontSize == 17);
+    REQUIRE(file::writeAtomic(path, R"({"fontSize": 0})"));
+    CHECK(shell::Settings::load(path).fontSize == 14);
+    REQUIRE(file::writeAtomic(path, R"({"fontPx": 40})"));
+    CHECK(shell::Settings::load(path).fontSize == 18);
+    file::remove(path);
+}
+
 TEST("settings: Appearance changes wait for Save, which applies them and closes") {
     const std::string path = testPath();
     file::remove(path);
     Harness         h(path);
     SettingsDialog &d = h.open();
-    h.click(d.find("Large"));
     h.click(d.find("24-hour clock (14:34)"));
     h.click(d.find("Show link previews"));
     h.click(d.find("Display names"));
@@ -506,7 +541,7 @@ TEST("settings: Appearance changes wait for Save, which applies them and closes"
     h.key(plat::Key::Up);
     CHECK(days->value() == 16);
     CHECK(d.draft().relevantDays == 16);
-    CHECK(d.draft().fontSize == 2 && d.draft().use24h && !d.draft().linkPreviews);
+    CHECK(d.draft().use24h && !d.draft().linkPreviews);
     CHECK(d.draft().names == 2);
     CHECK(h.settings.names == 0);
     // A new language: the restart note says dates follow at once.
@@ -517,9 +552,7 @@ TEST("settings: Appearance changes wait for Save, which applies them and closes"
     CHECK_STR(d.draft().language, "ja");
     // Nothing applied or saved yet.
     CHECK_STR(base::dateLanguage(), "en");
-    CHECK(h.settings.fontSize == 1);
     CHECK_FALSE(h.settings.use24h);
-    CHECK(app().userTextScale() == 1.f);
     // The draft survives switching pages.
     d.showPage(SettingsDialog::Page::About);
     pump();
@@ -533,8 +566,6 @@ TEST("settings: Appearance changes wait for Save, which applies them and closes"
     pump();
     h.click(save);
     CHECK(h.sh->settingsDialog() == nullptr);
-    CHECK(h.settings.fontSize == 2);
-    CHECK(app().userTextScale() > 1.1f);
     CHECK(h.settings.use24h);
     CHECK(base::use24h());
     // …and dates are Japanese now, before any restart.
@@ -547,7 +578,7 @@ TEST("settings: Appearance changes wait for Save, which applies them and closes"
     CHECK_FALSE(h.ctx.linkPreviews);
     CHECK(h.settings.relevantDays == 16);
     const shell::Settings r = shell::Settings::load(path);
-    CHECK(r.fontSize == 2 && r.use24h && !r.linkPreviews && r.relevantDays == 16);
+    CHECK(r.use24h && !r.linkPreviews && r.relevantDays == 16);
     CHECK(h.settings.names == 2 && r.names == 2);
     file::remove(path);
 }

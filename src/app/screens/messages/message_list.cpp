@@ -494,7 +494,8 @@ public:
 
 MessageList::MessageList(Context &ctx)
     : _ctx(ctx), _adapter(std::make_unique<Adapter>(*this)), _alive(std::make_shared<char>(0)) {
-    _threadsInline = ctx.threadsInline;
+    _threadsInline  = ctx.threadsInline;
+    _boundTextScale = ui::app() ? ui::app()->userTextScale() : 1.f;
     setRole(ui::Role::List);
     setBackground(C::Surface);
     setLayoutBoundary(true);
@@ -2402,6 +2403,16 @@ void MessageList::setThreadsInline(bool on) {
     _inlineThreads.clear(); // switching modes drops the expansions (an open panel stays)
     if (!_items.empty())
         rowsChanged(0, int(_items.size()));
+}
+
+void MessageList::styleChanged() {
+    View::styleChanged();
+    const float s = ui::app() ? ui::app()->userTextScale() : 1.f;
+    if (s == _boundTextScale)
+        return;
+    _boundTextScale = s;
+    if (!_items.empty())
+        rowsChanged(0, int(_items.size())); // the kept bodies too
 }
 
 void MessageList::setOpenThreadRoot(Ts root) {

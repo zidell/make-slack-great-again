@@ -1476,16 +1476,16 @@ msgid "Font size"
 msgstr "文字サイズ"
 
 #: src/app/screens/settings/settings_dialog.cpp
-msgid "Small"
-msgstr "小"
+msgid "Text size"
+msgstr "文字サイズ"
 
 #: src/app/screens/settings/settings_dialog.cpp
-msgid "Medium (default)"
-msgstr "中（デフォルト）"
+msgid " px"
+msgstr " px"
 
 #: src/app/screens/settings/settings_dialog.cpp
-msgid "Large"
-msgstr "大"
+msgid "15 px is the default. Cmd/Ctrl + and - change it at any time, 0 resets it."
+msgstr "既定は15 pxです。Cmd/Ctrl + と - でいつでも変更でき、0 で元に戻ります。"
 
 #: src/app/screens/settings/settings_dialog.cpp
 msgid "Language"
@@ -3178,6 +3178,18 @@ msgid "Jump to a conversation"
 msgstr "会話にジャンプ"
 
 #: src/app/screens/shell/shortcuts.cpp
+msgid "Larger text"
+msgstr "文字を大きく"
+
+#: src/app/screens/shell/shortcuts.cpp
+msgid "Smaller text"
+msgstr "文字を小さく"
+
+#: src/app/screens/shell/shortcuts.cpp
+msgid "Default text size"
+msgstr "文字サイズを元に戻す"
+
+#: src/app/screens/shell/shortcuts.cpp
 msgid "New line in message"
 msgstr "メッセージ内で改行"
 
@@ -3220,6 +3232,10 @@ msgstr "ダイアログまたはウィンドウを閉じる"
 #: src/app/screens/shell/shortcuts.cpp
 msgid "Remove idle session from msga"
 msgstr "待機中のセッションをmsgaから削除"
+
+#: src/app/screens/shell/shortcuts.cpp
+msgid "Switch to workspace 1-9"
+msgstr "ワークスペース1〜9に切り替え"
 
 #: src/app/screens/shell/sidebar.cpp
 msgid "Add sessions"
@@ -3929,6 +3945,14 @@ msgstr "ダウンロードした更新ファイルが破損しています（チ
 
 #~ msgid "Ask agent…"
 #~ msgstr "エージェントに質問…"
+#~ msgid "Small"
+#~ msgstr "小"
+
+#~ msgid "Medium (default)"
+#~ msgstr "中（デフォルト）"
+
+#~ msgid "Large"
+#~ msgstr "大"
 
 #~ msgid "January"
 #~ msgstr "1月"

@@ -135,7 +135,7 @@ TEST("old import: settings, workspaces and credentials from an earlier version")
     CHECK(s.custom.brightness == 4);
     CHECK_FALSE(s.custom.sidebarInverted);
     CHECK_FALSE(s.custom.gradient);
-    CHECK(s.fontSize == 2);
+    CHECK(s.fontSize == 17);
     CHECK_STR(s.language, "ja");
     CHECK((s.use24hSaved && !s.use24h));
     CHECK(s.relevantDays == 30);

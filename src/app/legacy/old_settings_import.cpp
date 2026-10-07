@@ -166,7 +166,7 @@ void importOldSettings(
     }
     customTheme(at(old, "appearance/customTheme").text(), &s->custom);
     const std::string font = at(old, "appearance/fontSize").text();
-    s->fontSize            = font == "small" ? 0 : font == "large" ? 2 : 1;
+    s->fontSize            = font == "small" ? 14 : font == "large" ? 17 : 15;
     if (has(old, "appearance/language"))
         s->language = at(old, "appearance/language").text();
     if (has(old, "appearance/timeFormat")) {

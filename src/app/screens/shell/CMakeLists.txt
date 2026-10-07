@@ -161,14 +161,21 @@ if(APPLE)
                         --output-partial-info-plist "${CMAKE_BINARY_DIR}/actool_partial.plist")
         endif()
     endif()
+    # Ad-hoc ("-") unless credentials.cmake names a signing identity. An ad-hoc
+    # signature's designated requirement is the cdhash, new on every build, so
+    # the keychain asks again each time; a certificate's stays the same.
+    if(NOT MSGA_CODESIGN_IDENTITY)
+        set(MSGA_CODESIGN_IDENTITY "-")
+    endif()
     add_custom_command(TARGET msga POST_BUILD
         COMMAND "${CMAKE_COMMAND}" -E copy_if_different
                 "${MSGA_INFO_PLIST}" "$<TARGET_BUNDLE_CONTENT_DIR:msga>/Info.plist"
         COMMAND "${CMAKE_COMMAND}" -E make_directory "$<TARGET_BUNDLE_CONTENT_DIR:msga>/Resources"
         ${_icon_step}
-        COMMAND codesign --force --deep --sign - "$<TARGET_BUNDLE_DIR:msga>"
+        COMMAND codesign --force --deep --timestamp=none --sign "${MSGA_CODESIGN_IDENTITY}"
+                "$<TARGET_BUNDLE_DIR:msga>"
         VERBATIM
-        COMMENT "Installing Info.plist, app icon and ad-hoc signing msga.app")
+        COMMENT "Installing Info.plist, app icon and signing msga.app")
 elseif(WIN32)
     # A GUI-subsystem exe (-mwindows): no console window opens behind msga.
     # MinGW's WinMainCRTStartup still calls main().

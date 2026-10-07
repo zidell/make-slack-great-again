@@ -950,6 +950,16 @@ Shell::Shell(screens::Context &ctx, Window &win, Settings &settings, std::string
     shortcuts::install(win, Id::CloseFrontmost, [this] { closeFrontmost(); });
     shortcuts::install(win, Id::SearchMessages, [this] { openSearch(); });
     shortcuts::install(win, Id::QuickSwitch, [this] { showQuickSwitcher(); });
+    shortcuts::install(win, Id::TextBigger, [this] { setTextSize(_settings.fontSize + 1); });
+    shortcuts::install(win, Id::TextSmaller, [this] { setTextSize(_settings.fontSize - 1); });
+    shortcuts::install(win, Id::TextReset, [this] { setTextSize(Settings::kFontPxDefault); });
+    for (int i = 0; i < 9; ++i)
+        win.addShortcut(plat::Key(int(plat::Key::Num1) + i), Window::kPrimary, [this, i] {
+            const std::vector<std::string> keys = _wsStack->keys();
+            if (size_t(i) < keys.size() && !(keys[i] == _activeKey && _signedIn) &&
+                onSwitchWorkspace)
+                onSwitchWorkspace(keys[i]);
+        });
     win.keyFilter = [this](const Event &e) {
         noteActivity();
         return removeIdleSession(e);
@@ -998,6 +1008,15 @@ void Shell::saveSettingsAsync() {
     if (_saveTimer)
         _ctx.app.cancelTimer(std::exchange(_saveTimer, 0));
     _settings.saveInBackground(_ctx.app.platform(), _settingsPath);
+}
+
+void Shell::setTextSize(int px) {
+    px = std::clamp(px, Settings::kFontPxMin, Settings::kFontPxMax);
+    if (px == _settings.fontSize)
+        return;
+    _settings.fontSize = px;
+    _ctx.app.setUserTextScale(_settings.fontScale());
+    saveSettingsSoon();
 }
 
 void Shell::saveSettingsNow() {

@@ -241,6 +241,9 @@ public:
 
     void      layout() override;
     bool      onEvent(ui::Event &e) override;
+    // The rows bake their text sizes in when bound: a new text size
+    // (App::setUserTextScale) re-binds them all.
+    void      styleChanged() override;
     ui::SizeF measureContent(float, float) override { return {0, 0}; }
 
 private:
@@ -347,6 +350,7 @@ private:
     bool                       _reading        = true;
     // Inline threads, dismissed previews, folded images, expanded cards.
     bool                       _threadsInline  = false;
+    float                      _boundTextScale = 1; // the userTextScale the rows were bound at
     Ts                         _openThreadRoot = 0;
     // Not "_inline": a keyword to MSVC, and a macro (__inline) in mingw's CRT.
     std::vector<Ts>            _inlineThreads;
