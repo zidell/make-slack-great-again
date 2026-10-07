@@ -18,6 +18,7 @@
 #include "screens/shell/canvas_page.h"
 #include "screens/shell/canvas_viewer.h"
 #include "screens/shell/channel_dialogs.h"
+#include "screens/shell/channel_tint.h"
 #include "screens/shell/context_menus.h"
 #include "screens/shell/header.h"
 #include "screens/shell/huddle_banner.h"
@@ -846,6 +847,11 @@ Shell::Shell(screens::Context &ctx, Window &win, Settings &settings, std::string
     ctx.profileHover = [this](model::UserRef u, RectF r, int mode) {
         _profiles->hover(u, r, mode);
     };
+
+    // The fork's conversation colours (channel_tint.h).
+    _tints = std::make_unique<ChannelTints>(ctx, win, *_sidebar, _settings, _activeKey, [this] {
+        saveSettingsSoon();
+    });
     _sidebar->setMenus(_menus.get());
     _sidebar->footer().onManageStatus = [this] {
         StatusDialog::show(_win, _ctx)->onError = [this](const std::string &message) {
@@ -1643,6 +1649,7 @@ void Shell::open(ConvRef conv) {
     if (conv != _current && threadOpen())
         closeThread(); // a leave path: the thread composer stashes its draft
     _current = conv;
+    _tints->show(conv);
     // Back/forward history: a jump being applied keeps the forward stack
     // (editor undo/redo), every direct open discards it.
     if (_navApplying) {
@@ -1699,6 +1706,7 @@ void Shell::leaveWorkspace() {
     if (_thread)
         _thread->clear();
     _current = kNoConv;
+    _tints->show(kNoConv);
     if (!_navSwitching)
         _pendingNav = {}; // a manual switch cancels a jump
     _composer->setTarget(kNoConv, 0);
@@ -1994,6 +2002,7 @@ void Shell::leaveConversationChrome(bool keepComposer) {
         _composer->setEnabled(false);
     }
     _current = kNoConv;
+    _tints->show(kNoConv);
     _header->setVisible(false);
     _tabs->setVisible(false);
     _huddleBanner->setVisible(false);

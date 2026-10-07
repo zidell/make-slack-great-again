@@ -6,6 +6,7 @@ add_library(msga_screens_shell STATIC
     canvas_page.cpp
     canvas_viewer.cpp
     channel_dialogs.cpp
+    channel_tint.cpp
     composer.cpp
     composer_popups.cpp
     context_menus.cpp

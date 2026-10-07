@@ -293,6 +293,8 @@ SizeF Menu::measureContent(float, float) {
             continue;
         float rw = kPadH + check + (it.icon != Button::kNoIcon ? kIcon + kIconGap : 0) +
                    std::ceil(_labels[i]->width()) + kSlack + kPadH;
+        if (it.swatch && it.icon == Button::kNoIcon) // the fork's colour chip
+            rw += kIcon + kIconGap;
         if (_hints[i])
             rw += kGapRight + std::ceil(_hints[i]->width()) + kPadH;
         w = std::max(w, rw);
@@ -451,6 +453,11 @@ void Menu::paint(gfx::Painter &p) {
         if (it.icon != Button::kNoIcon) {
             const RectF ir{x, y + std::floor((h - kIcon) / 2), kIcon, kIcon};
             gfx::drawIcon(p, gfx::Icon(it.icon), ir, menuColor(it.checked ? Accent : Icon));
+            x += kIcon + kIconGap;
+        } else if (it.swatch) {
+            const RectF sr{x, y + std::floor((h - kIcon) / 2), kIcon, kIcon};
+            p.fillRoundRect(sr, 4, it.swatch);
+            p.strokeRoundRect(sr, 4, 1, menuColor(Sep));
             x += kIcon + kIconGap;
         }
         l->paint(p, snapPx({x, y + std::floor((h - l->height()) / 2)}));

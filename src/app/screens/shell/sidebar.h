@@ -118,6 +118,9 @@ public:
     uint8_t                           collapsedMask() const;
     void                              setCollapsedMask(uint8_t mask);
     std::function<void(uint8_t mask)> onCollapsedChanged;
+    // The fork's channel colours (channel_tint.h): restyles a row's name
+    // after the row set its own look.
+    std::function<void(model::ConvRef conv, ui::Label &name, bool unread)> styleName;
     // Each section's order (0 Starred, 1 Channels, 2 DMs / Sessions, 3 Agents
     // & apps): the ids listed first, in that order, then the rest — A to Z by
     // name in Starred and Channels (as Slack sorts them), the server's order

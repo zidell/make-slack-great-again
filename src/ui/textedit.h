@@ -62,6 +62,11 @@ public:
     void setMinLines(int n);
     void setMaxLines(int n); // 0 = grow without limit
     void setFont(Font f);
+    // The typed text's colour (the fork's: the composer takes a conversation's).
+    void setTextColor(C c) {
+        _textColor = c;
+        styleChanged();
+    }
     // Links drawn as pills on this background (C::None: plain link colour).
     void setLinkBackground(C c);
     // Paste only text/plain, never rich text (the composer).
@@ -248,6 +253,7 @@ private:
     uint8_t                       _minLines = 1, _maxLines = 8;
     uint8_t                       _selMode   = 0; // 0 char, 1 word, 2 line (drag granularity)
     Font                          _font      = Font::Body;
+    C                             _textColor = C::Text;
     bool                          _typingSet = false, _caretOn = true, _dragging = false;
     bool                          _caretTyped = false; // the caret last moved by an edit
     bool                          _masked = false, _plainPaste = false;

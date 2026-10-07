@@ -1291,6 +1291,7 @@ void MessageRow::buildContent(ui::View *col, const model::Message &m, bool root)
         buildBlocks(body, x->blocks.data(), x->blocks.size(), m.ts, -1, m.edited, labels);
     } else {
         RichOptions o;
+        o.color  = C::MessageText;
         o.edited = m.edited;
         o.labels = labels;
         buildBody(ctx, body, m.text, o, this);
@@ -1362,6 +1363,7 @@ void MessageRow::buildBlocks(
             auto *w = col->add<ui::View>();
             w->style().spacing(2).margins(0, 2, 0, 2);
             RichOptions o;
+            o.color  = C::MessageText;
             o.labels = labels;
             if (b.kind == K::Header) {
                 o.font  = Font::BodyBold;

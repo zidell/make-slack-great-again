@@ -543,6 +543,8 @@ public:
         label->setText(store.displayName(conv));
         label->setFont(unread ? Font::BodySemibold : Font::Body);
         label->setColor(text);
+        if (sidebar.styleName)
+            sidebar.styleName(conv, *label, unread);
         if (glyph)
             glyph->setTint(text);
         if (you)

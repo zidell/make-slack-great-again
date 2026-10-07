@@ -208,7 +208,7 @@ float TextEdit::lineHeight() const {
 }
 
 std::unique_ptr<text::Layout> TextEdit::buildPara(const Para &p, float w) const {
-    const text::Style    base = baseStyle(C::Text);
+    const text::Style    base = baseStyle(_textColor);
     text::AttributedText t;
     auto                 styleFor = [&](uint16_t f) {
         text::Style st = base;

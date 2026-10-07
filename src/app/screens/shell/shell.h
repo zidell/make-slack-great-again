@@ -45,6 +45,7 @@ class ThreadsPage;
 class ConvTabs;
 class HuddleBanner;
 class Menus;
+class ChannelTints;
 class MessageSearch;
 class ProfileCards;
 class QuickSwitcher;
@@ -232,6 +233,7 @@ public:
     DraftStash                 &drafts() { return _drafts; }
     Avatars                    &avatars() { return _avatars; }
     Menus                      &menus() { return *_menus; } // the context menus (context_menus.h)
+    ChannelTints               &tints() { return *_tints; } // background colours (channel_tint.h)
     ProfileCards               &profiles() { return *_profiles; }
     // The arrow badge a swipe that navigated flashes over the chat.
     const SwipeIndicator       &swipeBadge() const { return *_swipeBadge; }
@@ -438,6 +440,7 @@ private:
     QuickSwitcher                *_switcher = nullptr;
     MessageSearch                *_search   = nullptr;
     std::unique_ptr<Menus>        _menus;
+    std::unique_ptr<ChannelTints> _tints;
     std::unique_ptr<ProfileCards> _profiles;
 
     model::ConvRef              _current = model::kNoConv;

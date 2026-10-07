@@ -74,6 +74,8 @@ struct Settings {
     // The sidebar's own order, per workspace and section, dragged into place
     // on this device: "<key>#<section>=<conversation id>,<id>,…".
     std::vector<std::string> sidebarOrder;
+    // Conversation background colours (channel_tint.h): "<key>/<id>=<n>".
+    std::vector<std::string> channelTints;
     std::string              trayIconPath; // the picture for the custom tray icon
 
     // ── Composer state ──────────────────────────────────────────────────────

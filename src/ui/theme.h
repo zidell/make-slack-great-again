@@ -131,6 +131,8 @@ enum class C : uint8_t {
     MenuHover,
     MenuSeparator,
     DividerSubtle, // divider.subtle: the rule under macOS's unified header
+    MessageText,   // the fork's: message text, Text's value (a conversation colour stands in)
+    ComposerSend,  // the fork's: the lit send button, Accent's value (likewise)
     Count
 };
 
@@ -247,5 +249,10 @@ PaletteColors        paletteColors(Palette p, bool dark);
 bool                 parseHexColor(std::string_view s, Color *out);
 
 using gfx::hexColor;
+
+// The fork's: a hook color() asks first (channel tints); a non-zero answer
+// wins. colorIn (theme previews) keeps the table's.
+using ColorOverride = Color (*)(C c, bool dark);
+void setColorOverride(ColorOverride f);
 
 } // namespace ui

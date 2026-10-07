@@ -435,7 +435,7 @@ class SendGroup final : public View {
 public:
     void paint(gfx::Painter &p) override {
         if (on)
-            p.fillRoundRect(bounds(), 4, color(C::Accent));
+            p.fillRoundRect(bounds(), 4, color(C::ComposerSend));
     }
     bool on = false;
 };
@@ -561,6 +561,7 @@ Composer::Composer(screens::Context &ctx, DraftStash &drafts) : _ctx(ctx), _draf
     _edit->style().padding(14, 10);
     _edit->setPlainPaste(true);                // pasted rich text arrives as plain
     _edit->setLinkBackground(C::AccentSubtle); // mention / channel / GIF pills
+    _edit->setTextColor(C::MessageText);       // the conversation's colour, as its messages
     _edit->onChange = [this] {
         typing();
         refreshLook();

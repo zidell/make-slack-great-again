@@ -118,6 +118,8 @@ constexpr Color kLight[] = {
     0x0c000000, // MenuHover
     0x12000000, // MenuSeparator
     0xfff0f0f0, // DividerSubtle
+    0xff1d1c1d, // MessageText (= Text)
+    0xff611f69, // ComposerSend (= Accent, from the palette)
 };
 
 constexpr Color kDark[] = {
@@ -226,6 +228,8 @@ constexpr Color kDark[] = {
     0x0c000000, // MenuHover
     0x12000000, // MenuSeparator
     0xff2a2a2a, // DividerSubtle
+    0xffe6e6e6, // MessageText (= Text)
+    0xff1164a3, // ComposerSend (= Accent, from the palette)
 };
 static_assert(sizeof(kLight) / sizeof(Color) == size_t(C::Count), "kLight out of sync with C");
 static_assert(sizeof(kDark) / sizeof(Color) == size_t(C::Count), "kDark out of sync with C");
@@ -510,6 +514,7 @@ constexpr PaletteSlots paletteSlots() {
         {C::SidebarSelectedText, offsetof(PaletteColors, pillInk)},
         {C::SidebarScrollbar, offsetof(PaletteColors, scrollThumb)},
         {C::Accent, offsetof(PaletteColors, accent)},
+        {C::ComposerSend, offsetof(PaletteColors, accent)},
         {C::AccentHover, offsetof(PaletteColors, accentHover)},
         {C::AccentPressed, offsetof(PaletteColors, accentPressed)},
         {C::AccentSubtle, offsetof(PaletteColors, accentSubtle)},
@@ -539,8 +544,20 @@ Color colorIn(C c, bool dark) {
     return (dark ? kDark : kLight)[i];
 }
 
+namespace {
+ColorOverride g_colorOverride = nullptr;
+}
+
+void setColorOverride(ColorOverride f) {
+    g_colorOverride = f;
+}
+
 Color color(C c) {
-    return colorIn(c, app() && app()->dark());
+    const bool dark = app() && app()->dark();
+    if (g_colorOverride)
+        if (const Color v = g_colorOverride(c, dark))
+            return v;
+    return colorIn(c, dark);
 }
 
 Color systemHighlight() {

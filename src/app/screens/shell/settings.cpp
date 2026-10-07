@@ -100,6 +100,7 @@ const struct {
     {"zenWorkspaces", &Settings::zenWorkspaces},
     {"collapsedSections", &Settings::collapsedSections},
     {"sidebarOrder", &Settings::sidebarOrder},
+    {"channelTints", &Settings::channelTints},
 };
 
 const struct {

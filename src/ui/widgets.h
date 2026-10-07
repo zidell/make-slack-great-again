@@ -363,6 +363,8 @@ struct MenuItem {
     std::vector<MenuItem> sub;
     bool                  bold = false; // a spelling suggestion, in bold
 
+    Color swatch = 0; // the fork's: non-zero, a colour chip in the icon's place
+
     static MenuItem separatorItem();
     static MenuItem headerItem(std::string text);
 };

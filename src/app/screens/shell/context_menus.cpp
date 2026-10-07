@@ -2,6 +2,7 @@
 
 #include "base/i18n.h"
 #include "gfx/icons_generated.h"
+#include "screens/shell/channel_tint.h"
 #include "screens/shell/shell.h"
 
 #include <algorithm>
@@ -158,6 +159,8 @@ void Menus::runTeammate(int id, const std::string &role) {
 }
 
 void Menus::run(int id, uint32_t target) {
+    if (ChannelTints::ownsId(id))
+        return _shell.tints().run(id, target);
     if (id >= kFindSession) { // ── an agent workspace's "+" ──
         if (id == kFindSession)
             _shell.openSessionFinder();
@@ -246,7 +249,7 @@ ui::Menu *Menus::show(std::vector<ui::MenuItem> items, uint32_t target, ui::Poin
 }
 
 void Menus::showChat(ConvRef c, ui::PointF at) {
-    show(chatItems(c), c, at);
+    show(_shell.tints().withMenu(chatItems(c), c), c, at);
 }
 
 void Menus::showWorkspace(ui::PointF at) {
