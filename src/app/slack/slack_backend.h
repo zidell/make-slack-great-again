@@ -1,9 +1,11 @@
 // The Slack workspace backend: everything a signed-in workspace does, written into the Store.
 //
 // Two auth modes:
-//   session  (xoxc token + `d` cookie): no Socket Mode; new messages come
-//            from polling (the open chat every 5 s, counts in the background);
-//            an RTM socket may be held only for presence (rtm_presence.h)
+//   session  (xoxc token + `d` cookie): no Socket Mode. While the RTM
+//            presence link is up (rtm_presence.h) its event stream delivers,
+//            and the polls are a safety net (counts and the Threads feed every
+//            5 min, the open chat every minute); without it new messages come
+//            from polling (the open chat every 5 s, counts every 10 s)
 //   app keys (OAuth xoxp): the same Web API, events pushed over the app's
 //            Socket Mode socket (socket_mode.h) with polling as the safety
 //            net; a rotating token is refreshed (oauth.v2.access)
@@ -207,6 +209,9 @@ public:
     void                                     setRealtime(std::shared_ptr<SocketMode> socket);
     // True while events are pushed: the polls slow down to a safety net.
     bool                                     hasRealtimePush() const;
+    // The machine woke, or the network changed: the RTM stream reconnects at
+    // once (its socket may look open but be dead), and the polls catch up.
+    void                                     wake(const char *why);
     // The app registration a rotating OAuth token is refreshed with.
     void                                     setAppConfig(AppConfig cfg);
     // Fired (UI thread) after a refresh rotated the token: persist creds.
@@ -316,6 +321,8 @@ private:
     // check, and a poll that found what the socket should have pushed.
     void realtimeTick();
     void realtimeMissed();
+    // A stream resumed after a gap: the activity polls run at the next tick.
+    void pollActivitySoon();
     // A rotating token was rejected or expires: refresh it, then `then(ok)`.
     void refreshToken(std::function<void(bool ok)> then);
     bool canRefresh() const;

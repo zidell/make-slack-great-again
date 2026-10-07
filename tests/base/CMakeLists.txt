@@ -13,6 +13,7 @@ add_executable(msga_base_tests
     test_process.cpp
     test_observers.cpp
     test_thread.cpp
+    test_log.cpp
     main.cpp
 )
 target_link_libraries(msga_base_tests PRIVATE msga_base msga_test)

@@ -14,3 +14,8 @@
 - 원본 업데이트 반영: `git fetch upstream` → `git rebase upstream/master`(충돌은 우리 기능을 살려 해결) → `./scripts/build.sh --test`로 확인 → `git push --force-with-lease origin master` → 재빌드·재실행. 원본의 `version.cmake`가 올라가면 빌드본 버전도 따라 올라가 업데이트 알림이 사라진다.
 - 실행 중인 빌드본은 사용자의 실제 Slack 계정에 붙어 있다. System Events 등으로 키 입력을 보내는 테스트를 하지 않는다(Enter 한 번이 입력창 내용을 실제 채널에 전송한 적이 있다). 동작 확인은 단위 테스트와 사용자 직접 확인으로 한다.
 - `claude_backend` 테스트는 전체 실행 중 가끔 단독으로 실패하고 재실행하면 통과한다(타이밍성). 재실행으로 통과하면 회귀로 보지 않는다.
+- 진단 로그: `~/Library/Application Support/msga/MSGA/logs/msga-YYYY-MM-DD.log`(하루 한 파일, 14일 보관, 하루 32MB 상한). 메시지 누락·지연·연결 문제를 볼 때는 먼저 이 파일에서 다음을 찾는다.
+  - `rtm:` 워크스페이스별 RTM 수명주기(연결 시도·streaming·socket closed·no pong·reconnecting in·wake probe)와 1시간 요약(스트리밍 비율, 끊김·재연결 수, 이벤트 종류별 개수)
+  - `slack: … delivery` 실시간/폴링 전환 시점, `… never sent` / `… ahead of the stream` 안전망 폴링이 스트림 누락을 잡은 기록(채널 id, 몇 개, 몇 초 늦었는지)
+  - `app: woke from sleep` / `network online|offline` 슬립·네트워크 이벤트
+  - 이벤트 하나하나까지 보려면 `MSGA_LOG=debug`로 실행한다(`MSGA_LOG=debug build/msga.app/Contents/MacOS/msga`).

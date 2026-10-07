@@ -34,6 +34,7 @@
 #include "base/i18n.h"
 #include "base/time.h"
 #include "base/log.h"
+#include "base/log_file.h"
 #include "base/str.h"
 #include "gfx/icons_generated.h"
 #include "net/net.h"
@@ -258,6 +259,14 @@ int main(int argc, char **argv) {
     // A crash now prints a stack trace (stderr + crash.log, the file earlier
     // versions wrote too) instead of a bare "Segmentation fault", then still core-dumps.
     crash::install(identity::crashLogPath(pa));
+    // The diagnostic trail: <dataDir>/logs, a file per day, two weeks kept
+    // (base::setLogDir). MSGA_LOG=debug adds the debug lines.
+    if (const std::string data = identity::dataDir(pa); !data.empty() && demo.empty()) {
+        if (const char *lvl = std::getenv("MSGA_LOG"); lvl && std::string_view(lvl) == "debug")
+            base::setLogLevel(base::LogLevel::Debug);
+        base::setLogDir(file::join(data, "logs").c_str(), 14);
+        LOG_INFO("app", "msga %d starting", int(MSGA_VERSION));
+    }
     // Dev builds only: the main-thread hang watchdog (crash_handler.h), its
     // heartbeat started below. AddressSanitizer makes everything ~5-10x
     // slower, so ASan builds get a roomier window and only genuine hangs fire.
@@ -454,6 +463,8 @@ int main(int argc, char **argv) {
                     accounts->handleUrl(s);
         if (accounts && e.type == plat::EventType::NetworkChanged)
             accounts->networkChanged(e.online);
+        if (accounts && e.type == plat::EventType::Resumed)
+            accounts->systemResumed();
         sh.handleAppEvent(e);
     };
 

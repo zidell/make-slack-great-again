@@ -1,6 +1,7 @@
-// SlackBackend's realtime half (see slack_backend.h): Socket Mode events
-// into the Store, what a reconnect backfills, the presence link and the
-// OAuth token refresh.
+// SlackBackend's realtime half (see slack_backend.h): Socket Mode events —
+// and a session workspace's RTM stream, the same events unwrapped — into the
+// Store, what a reconnect backfills, the presence link and the OAuth token
+// refresh.
 //
 // Typing (user_typing is RTM-only, dead over Socket Mode) is not here.
 #include "app/slack/rtm_presence.h"
@@ -149,6 +150,18 @@ SlackBackend::Live::Live(SlackBackend &b) : b(b), s(b.store()) {
                 this->b.refreshSelfPresence(nullptr);
             });
         };
+        // Its stream is this workspace's own (Slack Connect channels
+        // included): every event is ours. A resume backfills the gap as a
+        // Socket Mode reconnect does.
+        rtm->onEvent = [this](const json::Value &ev) {
+            if (!this->b._authLost)
+                apply(ev, true);
+        };
+        rtm->onResumed = [this] {
+            onReconnected();
+            this->b.pollActivitySoon(); // client.counts: every conversation's gap at once
+        };
+        rtm->setLabel(str::concat({b._creds.teamId, " ", b._creds.teamName}));
     }
     // Proactive refresh: a periodic wall-clock check (a timer that long would
     // sleep through a suspend), retrying transient failures by itself. The
@@ -184,7 +197,7 @@ void SlackBackend::setRealtime(std::shared_ptr<SocketMode> socket) {
 }
 
 bool SlackBackend::hasRealtimePush() const {
-    return _live->socket != nullptr;
+    return _live->socket != nullptr || (_live->rtm && _live->rtm->delivering());
 }
 
 void SlackBackend::Live::attach(std::shared_ptr<SocketMode> sock) {
@@ -212,15 +225,19 @@ void SlackBackend::realtimeTick() {
 }
 
 void SlackBackend::realtimeMissed() {
-    Live &l = *_live;
+    Live      &l   = *_live;
     // Throttled: a persistently sick socket would otherwise reconnect on
     // every poll, each one a conversations.list reload (the 429 storm).
-    if (!l.socket || !l.due(l.lastReestablish, kReestablishGapMs))
+    const bool rtm = !l.socket && l.rtm && l.rtm->delivering();
+    if ((!l.socket && !rtm) || !l.due(l.lastReestablish, kReestablishGapMs))
         return;
     LOG_WARN(
         "slack", "%s: realtime missed messages — re-establishing socket", _creds.teamId.c_str()
     );
-    l.socket->reconnectNow();
+    if (rtm)
+        l.rtm->reconnectNow("a poll found messages the stream never sent");
+    else
+        l.socket->reconnectNow();
 }
 
 // The socket is the app's, shared by every workspace: an event is ours when
@@ -310,6 +327,17 @@ void SlackBackend::Live::apply(const json::Value &ev, bool ours) {
             b.markAlive(fresh.id);
             b.mergeConversation(std::move(fresh));
         }
+        return;
+    }
+    if (type == "channel_joined" || type == "group_joined" || type == "mpim_joined" ||
+        type == "im_created") {
+        // RTM's (Socket Mode says member_joined_channel): one I joined or
+        // opened elsewhere, the channel object (or, in older shapes, its id).
+        const json::Value      ch = ev["channel"];
+        const std::string_view id = ch["id"].str().empty() ? ch.str() : ch["id"].str();
+        const ConvRef          c  = s.findConversation(id);
+        if (!id.empty() && (c == kNoConv || !s.conversation(c).member))
+            fetchJoined(std::string(id));
         return;
     }
     if (type == "member_joined_channel") {
@@ -645,6 +673,12 @@ model::Backend::PresenceLink SlackBackend::presenceLink() const {
 
 RtmPresence *SlackBackend::presenceLinkForTest() const {
     return _live->rtm.get();
+}
+
+void SlackBackend::wake(const char *why) {
+    if (_live->rtm)
+        _live->rtm->wake(why);
+    pollActivitySoon();
 }
 
 void SlackBackend::noteUserActivity() {

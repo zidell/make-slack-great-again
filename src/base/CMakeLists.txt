@@ -4,6 +4,7 @@ add_library(msga_base STATIC
     json.cpp
     file.cpp
     log.cpp
+    log_file.cpp
     time.cpp
     locale_names.cpp
     i18n.cpp

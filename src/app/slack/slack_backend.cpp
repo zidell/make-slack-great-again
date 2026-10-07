@@ -47,6 +47,9 @@ constexpr int64_t     kRosterReloadGapMs      = 60'000;
 constexpr int64_t     kRosterSoonestGapMs     = 10'000;
 constexpr int64_t     kRosterFallbackGapMs    = 15 * 60'000;
 constexpr int64_t     kCountsPollGapMs        = 10'000;
+// A session workspace with its RTM stream up: the activity polls only catch
+// what the stream may have dropped.
+constexpr int64_t     kSafetyNetGapMs         = 5 * 60'000;
 constexpr int64_t     kThreadsPollGapMs       = 20'000;
 constexpr int64_t     kBackgroundPollGapMs    = 2 * 60'000;
 constexpr int64_t     kPresencePollGapMs      = 60'000;
@@ -283,6 +286,7 @@ struct SlackBackend::Read {
     ConvRef         openConv   = kNoConv;
     Ts              openThread = 0;
     int64_t         lastRoster = 0, lastCounts = 0, lastThreads = 0, lastFg = 0, lastBg = 0;
+    int             lastPush     = -1; // the delivery the log last named (-1: none yet)
     int64_t         lastPresence = 0, lastSelf = 0, lastStarred = 0, lastSaved = 0, lastUsers = 0;
     bool            visible = true; // the window shows (setWindowVisible)
     // By ConvRef (0: none yet): the newest ts a poll saw (baselineOf), and
@@ -2093,11 +2097,26 @@ void SlackBackend::Read::tick() {
     const int64_t t = now();
     // (1) The socket (if any) is still connected: a no-op while healthy.
     b.realtimeTick();
-    const bool    push      = b.hasRealtimePush();
+    const bool push      = b.hasRealtimePush();
+    // A session workspace's push is its RTM stream: the polls below go on as
+    // a safety net (Socket Mode workspaces skip them, as they always did).
+    const bool safetyNet = push && session;
+    if (int(push) != lastPush) {
+        if (lastPush >= 0 || push)
+            LOG_INFO(
+                "slack",
+                "%s: delivery %s",
+                b._creds.teamId.c_str(),
+                push ? (session ? "streaming (RTM; polls as a safety net)" : "pushed (Socket Mode)")
+                     : "polling (no stream)"
+            );
+        lastPush = int(push);
+    }
     // (0) No push: reload the roster ourselves (new DMs and channels). A
     // push workspace hears of them (and backfills on a reconnect).
-    const int64_t rosterGap = countsDisabled ? kRosterReloadGapMs : kRosterFallbackGapMs;
-    if (!push &&
+    const int64_t rosterGap =
+        countsDisabled && !safetyNet ? kRosterReloadGapMs : kRosterFallbackGapMs;
+    if ((!push || safetyNet) &&
         (t - lastRoster >= rosterGap || (rosterWanted && t - lastRoster >= kRosterSoonestGapMs))) {
         lastRoster   = t;
         rosterWanted = false;
@@ -2105,21 +2124,25 @@ void SlackBackend::Read::tick() {
     }
     pruneThreadState();
     // (0b) One request reports every conversation's activity.
-    if (!push && !countsDisabled && t - lastCounts >= kCountsPollGapMs) {
+    if ((!push || safetyNet) && !countsDisabled &&
+        t - lastCounts >= (safetyNet ? kSafetyNetGapMs : kCountsPollGapMs)) {
         lastCounts = t;
         pollUnreadCounts();
     }
     // (0c) Thread replies move no channel's `latest`: only the feed sees them.
-    if (!push && session && !threadsUnavailable && t - lastThreads >= kThreadsPollGapMs) {
+    if ((!push || safetyNet) && session && !threadsUnavailable &&
+        t - lastThreads >= (safetyNet ? kSafetyNetGapMs : kThreadsPollGapMs)) {
         lastThreads = t;
         pollThreadReplies();
     }
     // (0d) Watched threads (agent thread links): the backstop polls.
     if (!watches.empty())
         pollWatches();
-    // (2) The open chat; hidden, client.counts brings it forward when it
-    // moves (applyActivity).
-    const int64_t fgGap = !session ? 60'000 : visible ? 5'000 : kHiddenOpenPollGapMs;
+    // (2) The open chat: on a poll-only session workspace every 5 s while
+    // shown (hidden, client.counts brings it forward when it moves:
+    // applyActivity), else a minute (the push delivers; this catches what
+    // it missed).
+    const int64_t fgGap = !session || push ? 60'000 : visible ? 5'000 : kHiddenOpenPollGapMs;
     if (openConv != kNoConv && t - lastFg >= fgGap) {
         lastFg = t;
         pollConversation(openConv, true);
@@ -2244,13 +2267,25 @@ void SlackBackend::Read::applyActivity(
         mapjson::Counts prev, now;
     };
     std::vector<Moved> moved;
+    // While a stream delivers, newer activity than the Store holds is what
+    // the stream dropped: the log names it (the safety net's catch).
+    const bool         streamed = fromCounts && !priming && b.hasRealtimePush();
+    int                behind   = 0;
+    int64_t            lag      = 0;
+    std::string        behindIds;
     for (const mapjson::Counts &c : snapshot) {
         const auto    it        = activity.find(c.id);
         const bool    firstSeen = priming || it == activity.end();
         const ConvRef r         = s.findConversation(c.id);
         if (r != kNoConv) {
-            const model::Conversation &x      = s.conversation(r);
-            uint32_t                   unread = x.unread, mentions = x.mentions;
+            const model::Conversation &x = s.conversation(r);
+            if (streamed && x.member && c.latest > x.latest) {
+                ++behind;
+                lag = std::max<int64_t>(lag, b.nowSecs() - model::tsSecs(c.latest));
+                if (behindIds.size() < 200)
+                    behindIds += (behindIds.empty() ? "" : " ") + c.id;
+            }
+            uint32_t unread = x.unread, mentions = x.mentions;
             if (firstSeen && x.member && r != openConv) {
                 // Every DM unread is a red-badge "mention"; a muted
                 // conversation badges only explicit mentions.
@@ -2282,6 +2317,16 @@ void SlackBackend::Read::applyActivity(
         else
             it->second = c;
     }
+    if (behind)
+        LOG_WARN(
+            "slack",
+            "%s: the safety-net counts found %d conversation(s) ahead of the stream (newest %lld s "
+            "ago): %s",
+            b._creds.teamId.c_str(),
+            behind,
+            (long long)lag,
+            behindIds.c_str()
+        );
     std::sort(moved.begin(), moved.end(), [](const Moved &a, const Moved &b2) {
         return a.now.latest > b2.now.latest;
     });
@@ -2353,16 +2398,31 @@ void SlackBackend::Read::pollConversation(ConvRef c, bool foreground, Ts hint) {
             if (priming && !foreground)
                 return;
             resolveAuthors(page);
-            bool missed = false;
+            int missed     = 0;
+            Ts  missedFrom = 0;
             if (!priming)
                 for (const model::Message &m : page)
-                    if (m.ts > lastKnown)
-                        missed = inject(c, m.clone(), false) || missed;
+                    if (m.ts > lastKnown && inject(c, m.clone(), false)) {
+                        ++missed;
+                        missedFrom = missedFrom ? std::min(missedFrom, m.ts) : m.ts;
+                    }
             // The socket should have pushed that: it is compromised and
             // re-established (throttled). On a poll-only workspace
             // this poll IS the delivery, not a miss.
-            if (missed && b.hasRealtimePush())
+            if (missed && b.hasRealtimePush()) {
+                LOG_WARN(
+                    "slack",
+                    "%s: the %s poll of %s found %d message(s) the stream never sent (oldest %lld "
+                    "s "
+                    "ago)",
+                    b._creds.teamId.c_str(),
+                    foreground ? "open chat's" : "background",
+                    b.convId(c).c_str(),
+                    missed,
+                    (long long)(b.nowSecs() - model::tsSecs(missedFrom))
+                );
                 b.realtimeMissed();
+            }
             if (!foreground || page.empty())
                 return;
             // Deleted elsewhere: in the last snapshot, gone now, and not
@@ -2907,6 +2967,11 @@ void SlackBackend::setWindowVisible(bool v) {
 }
 
 // ── For the realtime half ───────────────────────────────────────────────────
+
+void SlackBackend::pollActivitySoon() {
+    Read &r      = *_read;
+    r.lastCounts = r.lastThreads = r.lastFg = 0; // the next tick polls them
+}
 
 bool SlackBackend::deliver(ConvRef c, model::Message m, bool parentIsMe) {
     return _read->inject(c, std::move(m), parentIsMe);

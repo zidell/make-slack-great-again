@@ -67,6 +67,9 @@ public:
     // plat's NetworkChanged: the shared Socket Mode socket reconnects when
     // the network comes back.
     void networkChanged(bool online);
+    // plat's Resumed (woke from sleep): every workspace's sockets are
+    // probably dead though they look open; they reconnect at once.
+    void systemResumed();
     // "Log out from <workspace>": the active one, or `key`'s ("" = active).
     void signOut();
     void signOut(const std::string &key);

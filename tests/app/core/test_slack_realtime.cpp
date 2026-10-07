@@ -880,6 +880,138 @@ TEST("slack realtime: rtm.connect refusing the token makes the link unavailable"
     CHECK(count("rtm.connect") == 1); // given up, not retried into a rate limit
 }
 
+namespace {
+
+// The newest open RTM socket's id ("" when none).
+std::string rtmConn() {
+    json::Document d;
+    d.parse(ctl("GET", "/_ctl/ws").body, nullptr);
+    std::string id;
+    for (const json::Value w : d.root())
+        if (w["open"].boolean() && w["conn"].str().starts_with("rtm-"))
+            id = std::string(w["conn"].str());
+    return id;
+}
+
+// A server frame on the newest open RTM socket.
+bool pushRtm(const std::string &frame) {
+    const std::string conn = rtmConn();
+    if (conn.empty())
+        return false;
+    std::string body = "{\"conn\":\"" + conn + "\",\"text\":";
+    json::escapeString(body, frame);
+    body += '}';
+    json::Document d;
+    d.parse(ctl("POST", "/_ctl/ws/send", std::move(body)).body, nullptr);
+    return d.root()["ok"].boolean();
+}
+
+// A session workspace with its RTM stream up.
+bool streaming(Env &e) {
+    e.be->setPresenceMode(Mode::WhileRunning);
+    return pumpUntil([&] { return e.be->hasRealtimePush() && !rtmConn().empty(); }, 5000);
+}
+
+} // namespace
+
+TEST("slack realtime: a session workspace's RTM stream delivers; polls drop to a safety net") {
+    if (!haveServer())
+        return;
+    Env e(true, false);
+    REQUIRE(e.connect());
+    CHECK_FALSE(e.be->hasRealtimePush()); // no link yet: polling delivers
+    REQUIRE(streaming(e));
+    // A message on the stream lands at once, counted as unread.
+    REQUIRE(pushRtm(
+        R"({"type":"message","channel":"C1","user":"UMIRA","text":"live","ts":"1800000000.000100"})"
+    ));
+    REQUIRE(pumpUntil([&] {
+        return e.store.findMessage(e.conv("C1"), model::parseTs("1800000000.000100"));
+    }));
+    CHECK(e.store.conversation(e.conv("C1")).unread == 1);
+    // A read elsewhere clears it.
+    REQUIRE(pushRtm(
+        R"({"type":"channel_marked","channel":"C1","ts":"1800000000.000100","unread_count_display":0,"mention_count_display":0})"
+    ));
+    REQUIRE(pumpUntil([&] { return e.store.conversation(e.conv("C1")).unread == 0; }));
+    // client.counts every 10 s without the stream (100 ms here); with it,
+    // once per 5 min (3 s here) at most.
+    const int counts = count("client.counts");
+    pumpFor(1500);
+    CHECK(count("client.counts") <= counts + 1);
+    // The stream gone (Native): polling delivers again, at its own pace.
+    e.be->setPresenceMode(Mode::Native);
+    CHECK_FALSE(e.be->hasRealtimePush());
+    const int polled = count("client.counts");
+    REQUIRE(pumpUntil([&] { return count("client.counts") >= polled + 3; }, 3000));
+}
+
+TEST("slack realtime: an RTM resume backfills; a joined channel is listed; a miss reconnects") {
+    if (!haveServer())
+        return;
+    Env e(true, false);
+    REQUIRE(e.connect());
+    REQUIRE(streaming(e));
+    // Dropped and back: the gap is backfilled (the roster, the DM badges).
+    const int lists = count("conversations.list");
+    ctl("POST", "/_ctl/ws/close", R"({"conn":")" + rtmConn() + R"(","code":1001})");
+    REQUIRE(pumpUntil([&] { return count("rtm.connect") >= 2 && e.be->hasRealtimePush(); }, 5000));
+    REQUIRE(pumpUntil([&] { return count("conversations.list") > lists; }, 5000));
+    REQUIRE(pumpUntil([&] { return e.store.conversation(e.conv("D1")).unread == 4; }, 5000));
+    // Joined elsewhere: listed without waiting for the roster.
+    set(R"({"conversations.info?channel=C2": {"ok": true, "channel": {"id": "C2",
+        "name": "design", "is_channel": true, "is_member": true}}})");
+    REQUIRE(pushRtm(R"({"type":"channel_joined","channel":{"id":"C2","name":"design"}})"));
+    REQUIRE(pumpUntil([&] {
+        return e.conv("C2") != kNoConv && e.store.conversation(e.conv("C2")).member;
+    }));
+    // The open chat's (now minutely) poll finds what the stream never sent:
+    // the stream is re-established.
+    e.be->setActiveConversation(e.conv("C1"), 0);
+    set(R"({"conversations.history": {"ok": true, "messages": [
+        {"type": "message", "user": "UMIRA", "text": "first", "ts": "1800000000.000800"}],
+        "has_more": false}})");
+    REQUIRE(pumpUntil(
+        [&] { return e.store.findMessage(e.conv("C1"), model::parseTs("1800000000.000800")); }, 5000
+    ));
+    const int connects = count("rtm.connect");
+    set(R"({"conversations.history": {"ok": true, "messages": [
+        {"type": "message", "user": "UMIRA", "text": "missed", "ts": "1800000000.000900"},
+        {"type": "message", "user": "UMIRA", "text": "first", "ts": "1800000000.000800"}],
+        "has_more": false}})");
+    REQUIRE(pumpUntil(
+        [&] { return e.store.findMessage(e.conv("C1"), model::parseTs("1800000000.000900")); }, 5000
+    ));
+    REQUIRE(pumpUntil([&] { return count("rtm.connect") > connects; }, 5000));
+}
+
+TEST("slack realtime: a wake probes the RTM socket; a silent one is replaced at once") {
+    if (!haveServer())
+        return;
+    Env e(true, false);
+    REQUIRE(e.connect());
+    slack::RtmPresence        *rtm = e.be->presenceLinkForTest();
+    slack::RtmPresence::Timing t;
+    t.probeMs        = 150;
+    t.reconnectMinMs = 20;
+    rtm->setTimingForTest(t);
+    REQUIRE(streaming(e));
+    // A live socket answers the probe: kept. The polls catch up at once.
+    const int connects = count("rtm.connect"), counts = count("client.counts");
+    e.be->wake("test wake");
+    REQUIRE(pumpUntil([&] { return count("client.counts") > counts; }, 1000));
+    pumpFor(400);
+    CHECK(count("rtm.connect") == connects);
+    CHECK(e.be->hasRealtimePush());
+    // A dead one (no pong) is replaced right after the probe window, with
+    // no backoff.
+    ctl("POST", "/_ctl/ws/opt", R"({"rtm_nopong": true})");
+    e.be->wake("test wake");
+    REQUIRE(pumpUntil([&] { return count("rtm.connect") > connects; }, 2000));
+    ctl("POST", "/_ctl/ws/opt", R"({"rtm_nopong": false})");
+    REQUIRE(pumpUntil([&] { return e.be->hasRealtimePush(); }, 3000));
+}
+
 TEST("slack realtime: a huddle_thread starts a live huddle, its edit ends it") {
     if (!haveServer())
         return;

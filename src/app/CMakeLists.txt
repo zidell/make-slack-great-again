@@ -73,6 +73,7 @@ add_library(msga_app_slack STATIC
     slack/slack_json.cpp
     slack/socket_mode.cpp
     slack/rtm_presence.cpp
+    slack/rtm_stream.cpp
 )
 target_link_libraries(msga_app_slack PUBLIC msga_app_core msga_net msga_flags)
 

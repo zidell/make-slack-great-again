@@ -9,6 +9,7 @@
 #include "plat/plat.h"
 
 #include <algorithm>
+#include <utility>
 
 namespace slack {
 
@@ -29,13 +30,16 @@ bool fatalConnectError(const std::string &e) {
 
 RtmPresence::RtmPresence(plat::App &app, Connect connect, std::string cookie)
     : _app(app), _connect(std::move(connect)), _cookie(std::move(cookie)),
-      _alive(std::make_shared<bool>(true)) {}
+      _alive(std::make_shared<bool>(true)) {
+    startStats();
+}
 
 RtmPresence::~RtmPresence() {
     *_alive        = false;
     onStateChanged = nullptr;
     teardown();
     stopTimer(_idleTimer);
+    stopTimer(_statsTimer);
 }
 
 void RtmPresence::stopTimer(uint64_t &id) {
@@ -51,6 +55,8 @@ bool RtmPresence::connected() const {
 void RtmPresence::setMode(Mode mode) {
     if (mode == _mode)
         return;
+    static const char *const kModes[] = {"while running", "while using", "native (off)"};
+    LOG_INFO("rtm", "%s: presence mode %s", who(), kModes[std::min(int(mode), 2)]);
     _mode        = mode;
     // A deliberate change is a fresh start: forget a refusal (the session may
     // have been re-imported) and any inherited backoff.
@@ -112,6 +118,9 @@ void RtmPresence::openAndConnect() {
     if (_connecting)
         return;
     _connecting = true;
+    _connectAt  = base::monotonicMs();
+    ++_attempt;
+    LOG_INFO("rtm", "%s: rtm.connect (attempt %d)", who(), _attempt);
     setState(Link::Connecting);
     // presence_sub keeps Slack from streaming the whole roster's
     // presence_change (we subscribe to nobody); batch_presence_aware is its
@@ -132,15 +141,16 @@ void RtmPresence::openAndConnect() {
             _connecting = false;
             if (fatalConnectError(err)) {
                 LOG_WARN(
-                    "slack",
-                    "RtmPresence: rtm.connect refused (%s) — cannot keep this workspace active",
+                    "rtm",
+                    "%s: rtm.connect refused (%s) — no stream for this workspace, polling only",
+                    who(),
                     err.c_str()
                 );
                 _unavailable = true;
                 setState(Link::Unavailable);
                 return;
             }
-            LOG_INFO("slack", "RtmPresence: rtm.connect failed — %s", err.c_str());
+            LOG_INFO("rtm", "%s: rtm.connect failed — %s", who(), err.c_str());
             scheduleReconnect();
         }
     );
@@ -158,6 +168,7 @@ void RtmPresence::connectWs(const std::string &url) {
 }
 
 void RtmPresence::teardown() {
+    stopTimer(_probeTimer);
     ++_generation;
     _connecting     = false;
     _connectedSince = 0;
@@ -173,6 +184,8 @@ void RtmPresence::scheduleReconnect() {
         return; // one pending reconnect at a time
     setState(Link::Connecting);
     const int delay = std::max(_reconnectMs, _t.reconnectMinMs);
+    ++_reconnects;
+    LOG_INFO("rtm", "%s: reconnecting in %d ms", who(), delay);
     _reconnectMs    = std::min(delay * 2, _t.reconnectMaxMs);
     _reconnectTimer = _app.addTimer(delay, false, [this] {
         _reconnectTimer = 0;
@@ -192,11 +205,13 @@ void RtmPresence::onOpen() {
 void RtmPresence::onClosed(int code, const std::string &reason) {
     const int64_t now = base::monotonicMs();
     LOG_INFO(
-        "slack",
-        "RtmPresence: socket closed — code %d %s (up %lld ms)",
+        "rtm",
+        "%s: socket closed — code %d %s (up %lld ms, last frame %lld ms ago)",
+        who(),
         code,
         reason.c_str(),
-        (long long)(_connectedSince ? now - _connectedSince : 0)
+        (long long)(_connectedSince ? now - _connectedSince : 0),
+        (long long)frameAgeMs()
     );
     _connecting = false;
     stopTimer(_pingTimer);
@@ -212,15 +227,14 @@ void RtmPresence::onClosed(int code, const std::string &reason) {
 }
 
 void RtmPresence::onText(const std::string &text) {
-    // The socket carries every event of the workspace; only hello, pong and
-    // error are ours, and a frame without one of the words is none of them
-    // (no parse for the rest).
-    const std::string_view t(text);
-    if (t.find("hello") == t.npos && t.find("pong") == t.npos && t.find("error") == t.npos)
-        return;
+    // Every frame is read: besides hello, pong and error the socket carries
+    // the workspace's events, which onEvent delivers.
+    _lastFrameMs = base::monotonicMs();
     json::Document doc;
-    if (!doc.parse(std::string_view(text), nullptr))
+    if (!doc.parse(std::string_view(text), nullptr)) {
+        LOG_WARN("rtm", "%s: unparsable frame (%zu bytes)", who(), text.size());
         return;
+    }
     const std::string_view type = doc.root()["type"].str();
     if (type == "hello") {
         _reconnectMs = _t.reconnectMinMs;
@@ -230,6 +244,7 @@ void RtmPresence::onText(const std::string &text) {
             _tickleTimer = _app.addTimer(_t.alwaysTickleMs, true, [this] { sendTickle(true); });
         }
         sendTickle(true); // active at once, not at the first input
+        streamHello();
         return;
     }
     if (type == "pong") {
@@ -240,22 +255,30 @@ void RtmPresence::onText(const std::string &text) {
         // e.g. invalid_auth without the cookie: Slack drops the socket soon
         // anyway; don't wait for it.
         LOG_WARN(
-            "slack",
-            "RtmPresence: server error frame — %.*s",
+            "rtm",
+            "%s: server error frame — %.*s",
+            who(),
             int(std::min<size_t>(text.size(), 200)),
             text.data()
         );
         teardown();
         scheduleReconnect();
+        return;
     }
-    // Everything else is the event stream: not ours.
+    streamEvent(type, doc.root()); // everything else is the event stream
 }
 
 void RtmPresence::sendPing() {
     if (!connected())
         return;
     if (_awaitingPongs >= kMaxMissedPongs) {
-        LOG_WARN("slack", "RtmPresence: no pong for %d pings — reconnecting", _awaitingPongs);
+        LOG_WARN(
+            "rtm",
+            "%s: no pong for %d pings (last frame %lld ms ago) — reconnecting",
+            who(),
+            _awaitingPongs,
+            (long long)frameAgeMs()
+        );
         teardown();
         scheduleReconnect();
         return;
@@ -277,7 +300,7 @@ void RtmPresence::sendTickle(bool force) {
 void RtmPresence::onIdle() {
     if (_mode != Mode::WhileUsing)
         return;
-    LOG_INFO("slack", "RtmPresence: no input for %d s — dropping the link", _t.idleMs / 1000);
+    LOG_INFO("rtm", "%s: no input for %d s — dropping the link", who(), _t.idleMs / 1000);
     teardown();
     setState(Link::Idle);
 }
@@ -285,6 +308,21 @@ void RtmPresence::onIdle() {
 void RtmPresence::setState(Link s) {
     if (s == _state)
         return;
+    // The facts the log and the summary need: when streaming started and
+    // stopped, and how often it dropped.
+    const int64_t now = base::monotonicMs();
+    if (_state == Link::Active) {
+        _activeMs += _activeSince ? now - _activeSince : 0;
+        _activeSince = 0;
+        _downSince   = now;
+        ++_drops;
+        static const char *const kLinks[] = {
+            "off", "connecting", "streaming", "idle", "unavailable"
+        };
+        LOG_INFO("rtm", "%s: stream stopped (now %s)", who(), kLinks[std::min(int(s), 4)]);
+    } else if (s == Link::Active) {
+        _activeSince = now;
+    }
     _state = s;
     if (onStateChanged) {
         auto fn = onStateChanged;

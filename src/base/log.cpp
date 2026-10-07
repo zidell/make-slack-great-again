@@ -1,5 +1,7 @@
 #include "base/log.h"
 
+#include "base/log_file.h"
+
 #include "base/time.h"
 
 #include <cstdarg>
@@ -54,7 +56,10 @@ void logf(LogLevel l, const char *tag, const char *fmt, ...) {
     const int       n = std::snprintf(
         line,
         sizeof line,
-        "%02d:%02d:%02d.%03d %c %s: %s\n",
+        "%04d-%02d-%02d %02d:%02d:%02d.%03d %c %s: %s\n",
+        t.year,
+        t.month,
+        t.day,
         t.hour,
         t.minute,
         t.second,
@@ -72,6 +77,7 @@ void logf(LogLevel l, const char *tag, const char *fmt, ...) {
         std::fwrite(line, 1, len, g_file);
         std::fflush(g_file); // the log is read after crashes
     }
+    logToDayFile(t, us / 1000000, line, len); // setLogDir (log_file.h)
 }
 
 } // namespace base

@@ -307,8 +307,22 @@ void Accounts::adoptRecord(auth::WorkspaceRecord rec) {
 }
 
 void Accounts::networkChanged(bool online) {
+    LOG_INFO("app", "network %s", online ? "online" : "offline");
     if (auto sock = _socketMode.lock())
         sock->networkChanged(online);
+    if (online)
+        for (const auto &r : _running)
+            if (r->slack)
+                r->slack->wake("the network came back");
+}
+
+void Accounts::systemResumed() {
+    LOG_INFO("app", "woke from sleep");
+    if (auto sock = _socketMode.lock())
+        sock->networkChanged(true); // the shared socket: the same fresh start
+    for (const auto &r : _running)
+        if (r->slack)
+            r->slack->wake("woke from sleep");
 }
 
 bool Accounts::handleUrl(std::string_view url) {
