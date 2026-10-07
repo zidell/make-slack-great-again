@@ -13,6 +13,7 @@
 #include "app/screens/messages/emoji_picker.h"
 #include "app/screens/messages/message_dialogs.h"
 #include "app/screens/messages/image_cache.h"
+#include "app/screens/messages/image_zoom.h"
 #include "app/screens/messages/rich.h"
 #include "app/screens/messages/rows.h"
 #include "app/screens/messages/summary.h"
@@ -131,6 +132,7 @@ public:
 // The file viewer: the near-opaque viewer backdrop over the whole
 // window, a 56-px bar with the file's name (1.05×, onDark) and round 36-px
 // icon buttons, the picture centred below it, scaled to fit, never up.
+// A still picture zooms (ImageZoom: its events and cursor go there first).
 class FileViewer final : public ui::Popup {
 public:
     FileViewer(Context &ctx, MessageList *list, Ts ts, const model::File &f)
@@ -194,6 +196,11 @@ public:
             _full = add<CachedImage>(ctx.images, f.source(), ImageCache::Shape::Square);
             _full->setPlaceholder(C::None);
         }
+        _zoom = add<ImageZoom>( // over the picture
+            ctx,
+            ImageZoom::Source{_thumb->path(), _full ? _full->path() : "", f.width, f.height},
+            [this] { return imageRect(); }
+        );
         setFocusable(true);
     }
     void layout() override {
@@ -203,9 +210,12 @@ public:
         _thumb->setFrame(r);
         if (_full)
             _full->setFrame(r);
+        _zoom->setStage({0, kBarH, w, std::max(0.f, height() - kBarH)});
     }
     void paint(gfx::Painter &p) override { p.fillRect(bounds(), ui::color(C::ViewerBackdrop)); }
     bool onEvent(ui::Event &e) override {
+        if (_zoom->viewerEvent(e))
+            return true;
         if (e.type == ui::EventType::PointerDown) {
             // The backdrop closes it; the picture and the bar don't.
             if (e.button == plat::Button::Left && e.pos.y > kBarH && !imageRect().contains(e.pos))
@@ -213,6 +223,10 @@ public:
             return true;
         }
         return Popup::onEvent(e); // Escape
+    }
+    uint8_t cursorAt(ui::PointF pos) const override {
+        const uint8_t c = _zoom->viewerCursor(pos);
+        return c != kCursorInherit ? c : Popup::cursorAt(pos);
     }
 
 private:
@@ -258,6 +272,7 @@ private:
     model::File  _file;
     ui::View    *_bar   = nullptr;
     CachedImage *_thumb = nullptr, *_full = nullptr;
+    ImageZoom   *_zoom = nullptr;
 };
 
 // A label's text in window coordinates, not clipped by the list: in a message

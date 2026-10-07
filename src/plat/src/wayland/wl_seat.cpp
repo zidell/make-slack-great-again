@@ -175,6 +175,10 @@ uint32_t shapeFor(Cursor c) {
         return WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_NWSE_RESIZE;
     case Cursor::ResizeNESW:
         return WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_NESW_RESIZE;
+    case Cursor::ZoomIn:
+        return WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_ZOOM_IN;
+    case Cursor::ZoomOut:
+        return WP_CURSOR_SHAPE_DEVICE_V1_SHAPE_ZOOM_OUT;
     case Cursor::Hidden:
         break;
     }

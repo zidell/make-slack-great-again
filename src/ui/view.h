@@ -168,6 +168,9 @@ enum class EventType : uint8_t {
     // The press the capturing view got is over without a release (a long
     // press turned into a context menu): drop pressed state, don't click.
     PointerCancel,
+    // A touchpad pinch over this view, bubbling: dx = the magnification
+    // since the last one (the scale goes ×(1 + dx)), phase Begin/Update/End.
+    Magnify,
 };
 
 struct Event {

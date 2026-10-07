@@ -2,6 +2,7 @@
 # shared ImageCache (see the headers here).
 add_library(msga_screens_messages STATIC
     image_cache.cpp
+    image_zoom.cpp
     rich.cpp
     table_view.cpp
     rows.cpp

@@ -74,6 +74,11 @@ HCURSOR loadCursor(Cursor c) {
     case Cursor::ResizeNESW:
         id = IDC_SIZENESW;
         break;
+    // No system magnifier cursor on Windows.
+    case Cursor::ZoomIn:
+    case Cursor::ZoomOut:
+        id = IDC_CROSS;
+        break;
     case Cursor::Hidden:
         return nullptr;
     }

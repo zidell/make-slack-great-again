@@ -828,6 +828,18 @@ void Window::handle(const plat::Event &e) {
     case T::Scroll:
         scroll(e);
         break;
+    case T::Magnify:
+        _pointer = {float(e.pos.x), float(e.pos.y)};
+        if (View *t = hitAt(_pointer)) {
+            Event me{EventType::Magnify};
+            me.windowPos = _pointer;
+            me.dx        = float(e.dx);
+            me.phase     = e.phase;
+            me.mods      = e.mods;
+            me.raw       = &e;
+            dispatch(t, me);
+        }
+        break;
     case T::KeyDown:
     case T::KeyUp:
         key(e);

@@ -245,6 +245,8 @@ enum class Cursor : uint8_t {
     ResizeV,
     ResizeNWSE,
     ResizeNESW,
+    ZoomIn,
+    ZoomOut,
     Hidden,
 };
 
@@ -315,6 +317,9 @@ enum class EventType : uint8_t {
     // macOS's one-shot three-finger navigation swipe (NSEvent swipeWithEvent):
     // dx = +1 means "back" (content dragged right), -1 forward; dy likewise.
     SwipeGesture,
+    // A touchpad pinch (macOS): dx = the magnification since the last event
+    // (the scale goes ×(1 + dx)), phase Begin/Update/End, pos = the pointer.
+    Magnify,
 
     DragFinished, // a startDrag() session ended; dropAction = what the target did (None =
                   // cancelled)

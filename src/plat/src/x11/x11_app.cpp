@@ -1128,7 +1128,7 @@ xcb_cursor_t X11App::cursor(Cursor c) {
     // Theme names (linux/cursor_names), then the core cursor-font glyph
     // (X11/cursorfont.h) for servers or setups with no theme at all.
     static constexpr uint16_t kGlyphs[] = {
-        68, 152, 60, 150, 150, 34, 0, 52, 58, 52, 108, 116, 14, 12
+        68, 152, 60, 150, 150, 34, 0, 52, 58, 52, 108, 116, 14, 12, 34, 34
     };
     static_assert(std::size(kGlyphs) == size_t(Cursor::Hidden));
     xcb_cursor_t cur = XCB_NONE;

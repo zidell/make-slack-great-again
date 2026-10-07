@@ -22,6 +22,8 @@ constexpr const char *kNames[][6] = {
     {"ns-resize", "sb_v_double_arrow", "v_double_arrow"},                    // ResizeV
     {"nwse-resize", "size_fdiag", "bd_double_arrow", "bottom_right_corner"}, // ResizeNWSE
     {"nesw-resize", "size_bdiag", "fd_double_arrow", "bottom_left_corner"},  // ResizeNESW
+    {"zoom-in", "plus"},                                                     // ZoomIn
+    {"zoom-out", "minus"},                                                   // ZoomOut
 };
 static_assert(std::size(kNames) == size_t(Cursor::Hidden));
 

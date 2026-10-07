@@ -372,6 +372,21 @@ constexpr NSEventModifierFlags kDevLCtrl = 0x0001, kDevLShift = 0x0002, kDevRShi
     );
 }
 
+- (void)magnifyWithEvent:(NSEvent *)ev {
+    if (!_owner)
+        return;
+    Event e{.type = EventType::Magnify, .pos = _owner->viewPoint(ev), .dx = ev.magnification};
+    const NSEventPhase p = ev.phase;
+    if (p & NSEventPhaseBegan)
+        e.phase = plat::ScrollPhase::Begin;
+    else if (p & (NSEventPhaseEnded | NSEventPhaseCancelled))
+        e.phase = plat::ScrollPhase::End;
+    else
+        e.phase = plat::ScrollPhase::Update;
+    e.mods = plat::cocoa::modsFromFlags(ev.modifierFlags);
+    _owner->emit(e);
+}
+
 // ── keys ────────────────────────────────────────────────────────────────────
 
 - (Event)keyEvent:(NSEvent *)ev type:(EventType)t {
@@ -1181,6 +1196,15 @@ NSCursor *nsCursor(Cursor c) {
         return NSCursor.resizeLeftRightCursor;
     case Cursor::ResizeV:
         return NSCursor.resizeUpDownCursor;
+    // The system's magnifiers are private (AppKit's own, as Preview's).
+    case Cursor::ZoomIn:
+    case Cursor::ZoomOut: {
+        const SEL sel = c == Cursor::ZoomIn ? NSSelectorFromString(@"_zoomInCursor")
+                                            : NSSelectorFromString(@"_zoomOutCursor");
+        if ([NSCursor respondsToSelector:sel])
+            return ((NSCursor * (*)(id, SEL))[NSCursor methodForSelector:sel])(NSCursor.class, sel);
+        return NSCursor.crosshairCursor;
+    }
     // No public diagonal-resize, busy or spinning cursor before macOS 15
     // (the beach ball is the system's, shown when the app stops pumping).
     default:
