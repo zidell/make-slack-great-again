@@ -559,6 +559,43 @@ void CocoaApp::setBadgeCount(int count) {
     NSApp.dockTile.badgeLabel = count > 0 ? [NSString stringWithFormat:@"%d", count] : nil;
 }
 
+std::string CocoaApp::selectAsciiInputSource() {
+    TISInputSourceRef cur = TISCopyCurrentKeyboardInputSource();
+    if (!cur)
+        return {};
+    std::string id;
+    auto        ascii =
+        (CFBooleanRef)TISGetInputSourceProperty(cur, kTISPropertyInputSourceIsASCIICapable);
+    if (!(ascii && CFBooleanGetValue(ascii))) {
+        // The most recently used ASCII-capable source: an IME's own English
+        // mode (Gureum.system next to Gureum.han390) or ABC.
+        if (TISInputSourceRef to = TISCopyCurrentASCIICapableKeyboardInputSource()) {
+            auto curId =
+                (__bridge NSString *)TISGetInputSourceProperty(cur, kTISPropertyInputSourceID);
+            if (curId && TISSelectInputSource(to) == noErr)
+                id = curId.UTF8String;
+            CFRelease(to);
+        }
+    }
+    CFRelease(cur);
+    return id;
+}
+
+void CocoaApp::selectInputSource(std::string_view id) {
+    if (id.empty())
+        return;
+    NSString *sid = [[NSString alloc] initWithBytes:id.data()
+                                             length:id.size()
+                                           encoding:NSUTF8StringEncoding];
+    if (!sid)
+        return;
+    NSDictionary *filter = @{(__bridge NSString *)kTISPropertyInputSourceID : sid};
+    NSArray      *list =
+        CFBridgingRelease(TISCreateInputSourceList((__bridge CFDictionaryRef)filter, false));
+    if (list.count)
+        TISSelectInputSource((__bridge TISInputSourceRef)list.firstObject);
+}
+
 void CocoaApp::onThemeChanged() {
     // Delivered to every window so a handler can re-theme the one it gets.
     for (auto *w : std::vector<CocoaWindow *>(windows))

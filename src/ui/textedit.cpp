@@ -1246,7 +1246,10 @@ bool TextEdit::onEvent(Event &e) {
             if (_preedit.empty())
                 _preeditPos = std::min(_caret, uint32_t(_text.size()));
             _preedit       = e.raw->text;
-            _preeditCursor = e.raw->preeditCursorBegin;
+            // The caret sits at the end of the IME's selection: the macOS
+            // Korean IME selects the whole syllable being composed ({0, 1}),
+            // and its start would put the caret before the syllable.
+            _preeditCursor = e.raw->preeditCursorEnd;
             dropParaAt(_preeditPos);
         }
         invalidateLayout();

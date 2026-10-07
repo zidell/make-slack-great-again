@@ -1468,22 +1468,6 @@ TEST("composer: editing shows the banner; Escape and its cross leave it") {
     CHECK_FALSE(c.editBannerShown());
 }
 
-TEST("composer: undo send takes the message back and returns the text") {
-    Harness       h;
-    const ConvRef design = h.conv("C0DESIGN");
-    auto         &c      = h.composer();
-    const size_t  before = h.store.conversation(design).messages.size();
-    c.edit().insertText("oops");
-    REQUIRE(c.send());
-    CHECK(c.undoOffered());
-    CHECK(h.store.conversation(design).messages.size() == before + 1);
-    REQUIRE(c.undoSend());
-    pump(40);
-    CHECK_STR(c.edit().text(), "oops");
-    CHECK(h.store.conversation(design).messages.size() == before);
-    CHECK_FALSE(c.undoOffered());
-}
-
 TEST("composer: a suggested reply is the placeholder, Tab takes it") {
     Harness h;
     h.backend.suggestFor = h.conv("D0JONAS");

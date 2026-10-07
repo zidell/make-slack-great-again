@@ -1440,25 +1440,15 @@ TEST("create a channel: a name, Next, Private, Create — the backend makes it")
     CHECK(h.store.conversation(made).member);
 }
 
-TEST("undo send: the pill for 5 s, Ctrl+Z or a click takes the message back") {
+TEST("undo send: a send offers no undo; Cmd+Z in the empty editor keeps the message") {
     Harness       h;
     const ConvRef design = h.conv("C0DESIGN");
     auto         &c      = h.sh->composer();
     c.edit().insertText("oops");
     REQUIRE(c.send());
     pump(2);
-    CHECK(c.undoOffered());
-    const Ts ts = h.store.conversation(design).messages.back().ts;
-    CHECK(h.store.findMessage(design, ts)->text == "oops");
-    c.undoSend();
-    pump();
-    CHECK(h.store.findMessage(design, ts) == nullptr);
-    CHECK_STR(c.edit().text(), "oops");
     CHECK_FALSE(c.undoOffered());
-    // Ctrl+Z only with an empty editor.
-    REQUIRE(c.send());
-    pump(2);
-    const Ts ts2 = h.store.conversation(design).messages.back().ts;
+    const Ts ts = h.store.conversation(design).messages.back().ts;
     c.edit().focus();
     // The primary modifier: Cmd+Z on macOS.
     const plat::Key mod =
@@ -1468,21 +1458,8 @@ TEST("undo send: the pill for 5 s, Ctrl+Z or a click takes the message back") {
     app().platform().testHooks()->injectKey(h.win->native(), plat::Key::Z, false);
     app().platform().testHooks()->injectKey(h.win->native(), mod, false);
     pump();
-    CHECK(h.store.findMessage(design, ts2) == nullptr);
-    CHECK_STR(c.edit().text(), "oops");
-    // The canvas tab hides the composer: that withdraws the offer (the
-    // message stays sent).
-    c.edit().clear();
-    c.edit().insertText("keep");
-    REQUIRE(c.send());
-    pump(2);
-    REQUIRE(c.undoOffered());
-    const Ts ts3 = h.store.conversation(design).messages.back().ts;
-    h.sh->showCanvas(true);
-    pump();
-    CHECK_FALSE(c.undoOffered());
-    CHECK(h.store.findMessage(design, ts3) != nullptr);
-    h.sh->showCanvas(false);
+    CHECK(h.store.findMessage(design, ts) != nullptr);
+    CHECK(c.edit().empty());
 }
 
 TEST("workspace icon: the dialog; the rail shows the saved picture") {

@@ -751,6 +751,15 @@ public:
     // Unread count on the Dock icon / taskbar button / launcher entry; 0 clears.
     virtual void setBadgeCount(int count) {}
 
+    // ── Keyboard input source ───────────────────────────────────────────────
+    // macOS only (no-ops elsewhere). selectAsciiInputSource switches to the
+    // ASCII-capable keyboard input source (the Korean IME's own English mode
+    // when it has one) and returns the id of the source it replaced, or ""
+    // when the current one already types ASCII. selectInputSource puts a
+    // source back by that id.
+    virtual std::string selectAsciiInputSource() { return {}; }
+    virtual void        selectInputSource(std::string_view id) {}
+
     // ── Monitors ────────────────────────────────────────────────────────────
     virtual std::vector<Monitor> monitors() const { return {}; }
 

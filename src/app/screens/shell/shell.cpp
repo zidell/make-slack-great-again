@@ -3136,9 +3136,14 @@ void Shell::showQuickSwitcher() {
     };
     const SizeF ws = _win.size();
     p->setAnchor({(ws.w - 520) / 2, 90, 520, 0}, Popup::Place::Below);
-    p->onClosed = [this, raw] {
+    // Conversation names are mostly typed in English: the switcher opens in
+    // the ASCII input source and puts the user's own back when it closes
+    // (chosen or dismissed).
+    const std::string inputSource = _ctx.app.platform().selectAsciiInputSource();
+    p->onClosed                   = [this, raw, inputSource] {
         if (_switcher == raw)
             _switcher = nullptr;
+        _ctx.app.platform().selectInputSource(inputSource);
     };
     _switcher = raw;
     _win.showPopup(std::move(p));

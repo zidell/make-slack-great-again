@@ -273,6 +273,8 @@ public:
     bool                  notificationsAvailable() const override;
     uint64_t              notify(const Notification &n) override;
     void                  setBadgeCount(int count) override;
+    std::string           selectAsciiInputSource() override;
+    void                  selectInputSource(std::string_view id) override;
 
     bool darkMode() const override;
     int  doubleClickMs() const override;
