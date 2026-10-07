@@ -64,7 +64,7 @@ msgstr "表示"
 msgid "Hide"
 msgstr "非表示"
 
-#: src/ui/controls.cpp src/ui/filebrowser.cpp src/app/screens/messages/message_dialogs.cpp src/app/screens/messages/message_list.cpp src/app/screens/settings/settings_pages.cpp src/app/screens/shell/composer.cpp src/app/screens/shell/composer_popups.cpp src/app/screens/shell/scheduled_page.cpp src/app/screens/shell/session_dialogs.cpp src/app/screens/shell/shell_dialogs.cpp src/app/screens/shell/signin_dialogs.cpp src/app/screens/shell/status_dialog.cpp
+#: src/ui/controls.cpp src/ui/filebrowser.cpp src/app/screens/messages/message_dialogs.cpp src/app/screens/messages/message_pick.cpp src/app/screens/settings/settings_pages.cpp src/app/screens/shell/composer.cpp src/app/screens/shell/composer_popups.cpp src/app/screens/shell/scheduled_page.cpp src/app/screens/shell/session_dialogs.cpp src/app/screens/shell/shell_dialogs.cpp src/app/screens/shell/signin_dialogs.cpp src/app/screens/shell/status_dialog.cpp
 msgid "Cancel"
 msgstr "キャンセル"
 
@@ -842,7 +842,7 @@ msgstr "メッセージを削除"
 msgid "This action cannot be undone."
 msgstr "この操作は元に戻せません。"
 
-#: src/app/screens/messages/message_dialogs.cpp src/app/screens/messages/message_list.cpp
+#: src/app/screens/messages/message_dialogs.cpp src/app/screens/messages/message_pick.cpp
 msgid "Delete"
 msgstr "削除"
 
@@ -1123,23 +1123,6 @@ msgid "Next week"
 msgstr "来週"
 
 #: src/app/screens/messages/message_list.cpp
-msgid "Select messages to delete"
-msgstr "削除するメッセージを選択"
-
-#: src/app/screens/messages/message_list.cpp
-msgid "%1 selected (the most at once)"
-msgstr "%1 件選択中（一度に選べる上限）"
-
-#: src/app/screens/messages/message_list.cpp
-msgid "%n selected"
-msgid_plural "%n selected"
-msgstr[0] "%n 件選択中"
-
-#: src/app/screens/messages/message_list.cpp
-msgid "Delete %1"
-msgstr "%1 件を削除"
-
-#: src/app/screens/messages/message_list.cpp
 msgid "Delete image…"
 msgstr "画像を削除…"
 
@@ -1162,6 +1145,23 @@ msgstr "%1をコピー中"
 #: src/app/screens/messages/message_list.cpp
 msgid "Couldn't remove the preview (%1)."
 msgstr "プレビューを削除できませんでした（%1）。"
+
+#: src/app/screens/messages/message_pick.cpp
+msgid "Select messages to delete"
+msgstr "削除するメッセージを選択"
+
+#: src/app/screens/messages/message_pick.cpp
+msgid "%1 selected (the most at once)"
+msgstr "%1 件選択中（一度に選べる上限）"
+
+#: src/app/screens/messages/message_pick.cpp
+msgid "%n selected"
+msgid_plural "%n selected"
+msgstr[0] "%n 件選択中"
+
+#: src/app/screens/messages/message_pick.cpp
+msgid "Delete %1"
+msgstr "%1 件を削除"
 
 #: src/app/screens/messages/rich.cpp
 msgid "group message"
@@ -1440,7 +1440,7 @@ msgstr "システム"
 msgid "About"
 msgstr "情報"
 
-#: src/app/screens/settings/settings_dialog.cpp
+#: src/app/screens/settings/settings_dialog.cpp src/app/screens/shell/channel_tint.cpp
 msgid "Purple"
 msgstr "紫"
 
@@ -1448,11 +1448,11 @@ msgstr "紫"
 msgid "Charcoal"
 msgstr "チャコール"
 
-#: src/app/screens/settings/settings_dialog.cpp
+#: src/app/screens/settings/settings_dialog.cpp src/app/screens/shell/channel_tint.cpp
 msgid "Blue"
 msgstr "青"
 
-#: src/app/screens/settings/settings_dialog.cpp
+#: src/app/screens/settings/settings_dialog.cpp src/app/screens/shell/channel_tint.cpp
 msgid "Green"
 msgstr "グリーン"
 
@@ -2437,6 +2437,50 @@ msgstr "人のメンバー"
 #: src/app/screens/shell/channel_dialogs.cpp
 msgid "Joined"
 msgstr "参加済み"
+
+#: src/app/screens/shell/channel_tint.cpp
+msgid "Red"
+msgstr "赤"
+
+#: src/app/screens/shell/channel_tint.cpp
+msgid "Orange"
+msgstr "オレンジ"
+
+#: src/app/screens/shell/channel_tint.cpp
+msgid "Yellow"
+msgstr "黄"
+
+#: src/app/screens/shell/channel_tint.cpp
+msgid "Lime"
+msgstr "ライム"
+
+#: src/app/screens/shell/channel_tint.cpp
+msgid "Teal"
+msgstr "ティール"
+
+#: src/app/screens/shell/channel_tint.cpp
+msgid "Sky"
+msgstr "スカイ"
+
+#: src/app/screens/shell/channel_tint.cpp
+msgid "Indigo"
+msgstr "藍"
+
+#: src/app/screens/shell/channel_tint.cpp
+msgid "Pink"
+msgstr "ピンク"
+
+#: src/app/screens/shell/channel_tint.cpp
+msgid "Gray"
+msgstr "グレー"
+
+#: src/app/screens/shell/channel_tint.cpp
+msgid "Text color"
+msgstr "文字色"
+
+#: src/app/screens/shell/channel_tint.cpp
+msgid "None"
+msgstr "なし"
 
 #: src/app/screens/shell/composer.cpp
 msgid "Message sent"
@@ -3958,6 +4002,9 @@ msgstr "ダウンロードに失敗しました: %1"
 msgid "Downloaded update is corrupt (checksum mismatch)."
 msgstr "ダウンロードした更新ファイルが破損しています（チェックサム不一致）。"
 
+#~ msgid "Background color"
+#~ msgstr "背景色"
+
 #~ msgid "Just now"
 #~ msgstr "たった今"
 
@@ -3978,6 +4025,7 @@ msgstr "ダウンロードした更新ファイルが破損しています（チ
 
 #~ msgid "Ask agent…"
 #~ msgstr "エージェントに質問…"
+
 #~ msgid "Delete %n message?"
 #~ msgid_plural "Delete %n messages?"
 #~ msgstr[0] "%n 件のメッセージを削除しますか？"
