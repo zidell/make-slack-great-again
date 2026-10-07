@@ -24,6 +24,8 @@
 #include "plat/plat.h"
 
 #include <algorithm>
+#include <cstdlib>
+#include <ctime>
 #include <deque>
 #include <utility>
 
@@ -303,9 +305,20 @@ struct SlackBackend::Write {
         b.readCall(
             "conversations.mark",
             net::formEncode({{"channel", channel}, {"ts", ts}}),
-            [this, channel](const json::Document &, const std::string &err) {
+            [this, channel, ts](const json::Document &, const std::string &err) {
                 if (!err.empty() && err != "cancelled")
                     LOG_WARN("slack", "conversations.mark: %s", err.c_str());
+                else if (err.empty())
+                    // When the cursor reached Slack, against the message's own
+                    // time: a mobile push after a read on this Mac shows
+                    // whether the read was late or Slack pushed regardless.
+                    LOG_INFO(
+                        "slack",
+                        "conversations.mark: %s read to %s (%.0f s after it)",
+                        channel.c_str(),
+                        ts.c_str(),
+                        double(std::time(nullptr)) - std::atof(ts.c_str())
+                    );
                 for (size_t i = 0; i < marks.size(); ++i) {
                     if (marks[i].channel != channel)
                         continue;
