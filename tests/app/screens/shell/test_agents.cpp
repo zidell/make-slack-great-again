@@ -195,6 +195,20 @@ TEST("agents: Sessions, then the Team section with every teammate") {
     CHECK_STR(mates[2], "copy");
 }
 
+TEST("agents: a collapsed Team stays collapsed when a teammate opens, listing that one") {
+    Harness h;
+    h.settings.claudeTeammateDirs.emplace_back("engineer", home());
+    REQUIRE(h.sidebar().toggleSection("Team"));
+    pump();
+    CHECK(h.sidebar().collapsedMask() == 16);
+    CHECK_FALSE(h.sidebar().teammateState("engineer").visible);
+    h.sh->openTeammate("engineer");
+    pump();
+    CHECK(h.sidebar().collapsedMask() == 16);
+    CHECK(h.sidebar().teammateState("engineer").visible);
+    CHECK_FALSE(h.sidebar().teammateState("copy").visible);
+}
+
 TEST("agents: the yellow dot for an unavailable session and teammate, Shift+Del skips it") {
     Harness       h;
     const ConvRef dm   = h.conv("D0JONAS");

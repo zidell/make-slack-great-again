@@ -816,6 +816,15 @@ Shell::Shell(screens::Context &ctx, Window &win, Settings &settings, std::string
             saveSettingsSoon();
         });
     };
+    _sidebar->onOrderChanged = [this](int section, const std::vector<std::string> &ids) {
+        _settings.setSidebarOrder(_activeKey, section, ids);
+        saveSettingsSoon();
+    };
+    // Folded sections, per workspace (workspaceChanged puts them back).
+    _sidebar->onCollapsedChanged = [this](uint8_t mask) {
+        _settings.setCollapsedMask(_activeKey, mask);
+        saveSettingsSoon();
+    };
     _listHandle = body->add<ListHandle>(*_sidebar);
     buildMain(body);
     // With no workspace signed in (setSignedIn(false)) this takes the
@@ -962,7 +971,7 @@ Shell::Shell(screens::Context &ctx, Window &win, Settings &settings, std::string
         });
     win.keyFilter = [this](const Event &e) {
         noteActivity();
-        return removeIdleSession(e);
+        return removeIdleSession(e) || sidebarStep(e);
     };
     // The mouse's side buttons and trackpad swipes walk the same history.
     win.inputFilter = [this](const plat::Event &e) {
@@ -1619,7 +1628,10 @@ void Shell::workspaceChanged() {
     refreshWorkspaceIcon();
     rebuildTrayMenu();
     updateHeader();
-    _sidebar->footer().setZenOn(_settings.zenMode(_activeKey)); // its own
+    _sidebar->footer().setZenOn(_settings.zenMode(_activeKey));      // its own
+    _sidebar->setCollapsedMask(_settings.collapsedMask(_activeKey)); // and its folds
+    for (int s = 0; s < 4; ++s)                                      // and its order
+        _sidebar->setOrder(s, _settings.sidebarOrderOf(_activeKey, s));
 }
 
 void Shell::open(ConvRef conv) {
@@ -1825,6 +1837,28 @@ void Shell::openSearch() {
 // Shift+Del on an idle Claude Code session: "Remove from msga". Filtered
 // before the focused view sees the key, because the composer keeps focus; a
 // text field with a selection keeps the key (Cut there).
+// Option+Up/Down (Shift: unread only): the sidebar's neighbouring row,
+// ahead of the composer (which would move its caret), not over a popup.
+bool Shell::sidebarStep(const Event &e) {
+    using shortcuts::Id;
+    int  dir    = 0;
+    bool unread = false;
+    if (shortcuts::matches(Id::ConversationAbove, e))
+        dir = -1;
+    else if (shortcuts::matches(Id::ConversationBelow, e))
+        dir = 1;
+    else if (shortcuts::matches(Id::UnreadAbove, e))
+        dir = -1, unread = true;
+    else if (shortcuts::matches(Id::UnreadBelow, e))
+        dir = 1, unread = true;
+    if (!dir || !_signedIn || _settingsDlg || _win.topPopup([](const Popup &) { return true; }))
+        return false;
+    const ConvRef c = _sidebar->adjacentConversation(dir, unread);
+    if (c != kNoConv)
+        open(c);
+    return true;
+}
+
 bool Shell::removeIdleSession(const Event &e) {
     if (!shortcuts::matches(shortcuts::Id::RemoveIdleSession, e) || topDialog() || _settingsDlg)
         return false;

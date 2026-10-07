@@ -348,6 +348,7 @@ private:
     uint64_t   _fitMonitor = 0; // the monitor the window was last fitted on
     ui::Popup *topDialog() const;
     bool       removeIdleSession(const ui::Event &e); // the window's key filter
+    bool       sidebarStep(const ui::Event &e);       // the window's key filter
     bool       navInput(const plat::Event &e);        // the window's input filter
     // A workspace's tray item is kTrayWorkspace + its index on the rail.
     enum : uint32_t { kTraySettings = 1, kTrayResetSize, kTrayQuit, kTrayWorkspace = 100 };

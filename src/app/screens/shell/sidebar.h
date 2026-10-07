@@ -110,9 +110,35 @@ public:
     int                      hiddenChannels() const { return _hiddenChannels; }
     // Titles top to bottom: the visible nav entries, then the sections.
     std::vector<std::string> sectionTitles() const;
+
+    // ── The fork's order and folds (sidebar_order_impl.h) ──
+    // The collapsed sections, a bit per kind (1 starred, 2 channels, 4 DMs /
+    // sessions, 8 apps, 16 team). The shell keeps them per workspace: it sets
+    // the open workspace's, and a header click reports the new mask.
+    uint8_t                           collapsedMask() const;
+    void                              setCollapsedMask(uint8_t mask);
+    std::function<void(uint8_t mask)> onCollapsedChanged;
+    // Each section's order (0 Starred, 1 Channels, 2 DMs / Sessions, 3 Agents
+    // & apps): the ids listed first, in that order, then the rest — A to Z by
+    // name in Starred and Channels (as Slack sorts them), the server's order
+    // in the others. Dragging a row reorders its section and reports the
+    // section's new order; the shell keeps them per workspace, on this device.
+    void setOrder(int section, std::vector<std::string> ids); // rebuilds
+    std::function<void(int section, const std::vector<std::string> &ids)> onOrderChanged;
+    // Moves a conversation's row to `index` among its section's shown rows,
+    // as a drop there does (tests). False: no such row.
+    bool                        moveRow(model::ConvRef conv, int index);
+    // Option+Up/Down: the conversation shown above / below the open one
+    // (unreadOnly: the nearest unread one); kNoConv at the end. With none
+    // open, from the top (down) or the bottom (up).
+    model::ConvRef              adjacentConversation(int dir, bool unreadOnly) const;
+    // Tests: the conversations listed, top to bottom (collapsed ones left out).
+    std::vector<model::ConvRef> shownConversations() const;
+    void                        paintOver(gfx::Painter &p) override; // the drop line
+
     // Collapses or expands a section by title (tests; a click does the same).
-    bool                     toggleSection(std::string_view title);
-    void                     showAllChannels(); // the "N more channels" row
+    bool toggleSection(std::string_view title);
+    void showAllChannels(); // the "N more channels" row
 
     std::function<void()>                    onThreads;       // the Threads entry
     std::function<void()>                    onSavedMessages; // the Saved messages entry
@@ -145,7 +171,7 @@ public:
     std::vector<std::string> teammates() const;
     // A teammate row's look (tests): bold, selected, its avatar's presence.
     struct TeammateState {
-        bool exists = false, bold = false, selected = false;
+        bool exists = false, bold = false, selected = false, visible = false;
         int  presence = 0; // Avatar::Presence
     };
     TeammateState  teammateState(const std::string &role) const;
@@ -185,6 +211,16 @@ private:
     void               addChannelsMenu(ui::View *row);
     void               refreshTeammates();
 
+    // The fork's order, drag and drop (sidebar_order_impl.h).
+    void                   sortSection(int section, std::vector<model::ConvRef> &list) const;
+    bool                   rowEvent(ConvRow *row, ui::Event &e); // true: a drag took it
+    void                   dragPress(ConvRow *row, ui::PointF windowPos);
+    bool                   dragMove(ConvRow *row, ui::PointF windowPos);
+    bool                   dragEnd();
+    void                   dragCancel();
+    std::vector<ConvRow *> shownRows(const SectionHeader *h, const ConvRow *except) const;
+    void                   dropAt(ConvRow *row, int index);
+
     screens::Context                      &_ctx;
     Avatars                               &_avatars;
     ui::ScrollView                        *_scroll = nullptr;
@@ -219,6 +255,14 @@ private:
     int                      _hiddenChannels  = 0;
     bool                     _collapsed[5]    = {}; // starred, channels, DMs, apps, team
     bool                     _showAllChannels = false;
+
+    // The fork's order, drag and drop.
+    std::vector<std::string> _order[4];          // setOrder
+    ConvRow                 *_dragRow = nullptr; // pressed, maybe dragging
+    ui::PointF               _dragFrom;
+    bool                     _dragging         = false;
+    bool                     _rebuildAfterDrag = false;
+    int                      _dropIndex        = -1;
 };
 
 } // namespace shell

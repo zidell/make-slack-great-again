@@ -129,6 +129,8 @@ TEST("shortcuts: one row per action, the help panel's rows in order") {
     const char *help[] = {
         "Open settings",
         "Jump to a conversation",
+        "Conversation above in the sidebar",
+        "Conversation below in the sidebar",
         "Search messages",
         "Larger text",
         "Smaller text",

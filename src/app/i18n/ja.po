@@ -3178,6 +3178,22 @@ msgid "Jump to a conversation"
 msgstr "会話にジャンプ"
 
 #: src/app/screens/shell/shortcuts.cpp
+msgid "Conversation above in the sidebar"
+msgstr "サイドバーの上の会話"
+
+#: src/app/screens/shell/shortcuts.cpp
+msgid "Conversation below in the sidebar"
+msgstr "サイドバーの下の会話"
+
+#: src/app/screens/shell/shortcuts.cpp
+msgid "Unread conversation above"
+msgstr "上の未読の会話"
+
+#: src/app/screens/shell/shortcuts.cpp
+msgid "Unread conversation below"
+msgstr "下の未読の会話"
+
+#: src/app/screens/shell/shortcuts.cpp
 msgid "Larger text"
 msgstr "文字を大きく"
 

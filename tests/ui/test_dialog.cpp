@@ -8,6 +8,8 @@
 #include "ui/datetime.h"
 #include "base/time.h"
 
+#include <cmath>
+
 using namespace uitest;
 
 namespace plat::testing_internal {

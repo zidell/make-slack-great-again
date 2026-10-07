@@ -347,16 +347,16 @@ TEST("sidebar: starring moves a row") {
     Harness       h;
     const ConvRef eng   = h.conv("C0ENG");
     auto          order = h.sh->sidebar().order();
-    // Starred (general, design) first, then channels, then DMs.
+    // Starred (design, general: A to Z) first, then channels, then DMs.
     REQUIRE(order.size() == h.store.conversationCount());
-    CHECK(order[0] == h.conv("C0GENERAL"));
-    CHECK(order[1] == h.conv("C0DESIGN"));
+    CHECK(order[0] == h.conv("C0DESIGN"));
+    CHECK(order[1] == h.conv("C0GENERAL"));
     CHECK(order[2] == eng);
 
     h.backend.setStarred(eng, true);
     pump();
     order = h.sh->sidebar().order();
-    CHECK(order[2] == eng); // now the last starred row
+    CHECK(order[1] == eng); // starred now, between design and general
     CHECK(h.store.conversation(eng).starred);
 }
 

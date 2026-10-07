@@ -212,16 +212,242 @@ TEST("sidebar: the entries and sections, and Saved messages while something is s
     CHECK_STR(joined(h.sidebar().sectionTitles()), "Threads|Starred|Channels|Direct messages");
 }
 
-TEST("sidebar: a collapsed section lists nothing; opening one of its chats expands it") {
+TEST("sidebar: a collapsed section lists only the open chat; opening one keeps it collapsed") {
     Harness       h;
-    const ConvRef eng = h.conv("C0ENG");
+    const ConvRef eng = h.conv("C0ENG"), releases = h.conv("C0RELEASES"); // both under Channels
     REQUIRE(h.sidebar().toggleSection("Channels"));
     pump();
+    CHECK(h.sidebar().collapsedMask() == 2);
     CHECK_FALSE(h.sidebar().rowState(eng).visible); // unread, still hidden
     h.sh->open(eng);
     pump();
     CHECK(h.sidebar().rowState(eng).visible);
     CHECK(h.sidebar().rowState(eng).selected);
+    CHECK_FALSE(h.sidebar().rowState(releases).visible);
+    CHECK(h.sidebar().collapsedMask() == 2);
+    h.sh->open(releases); // the one left goes back under the fold
+    pump();
+    CHECK_FALSE(h.sidebar().rowState(eng).visible);
+    CHECK(h.sidebar().rowState(releases).visible);
+    CHECK(h.sidebar().collapsedMask() == 2);
+}
+
+TEST("sidebar: the folds are kept per workspace and come back on a switch") {
+    Harness h;
+    h.sh->setWorkspaces(
+        {{"slack:T1", "T1", "One", "", false}, {"slack:T2", "T2", "Two", "", false}}, "slack:T1"
+    );
+    REQUIRE(h.sidebar().toggleSection("Channels"));
+    pump();
+    CHECK(h.settings.collapsedMask("slack:T1") == 2);
+    CHECK(h.settings.collapsedMask("slack:T2") == 0);
+    // Another workspace opens with its own (all open)…
+    h.sh->setWorkspaces(h.sh->workspaces(), "slack:T2");
+    h.sh->workspaceChanged();
+    CHECK(h.sidebar().collapsedMask() == 0);
+    REQUIRE(h.sidebar().toggleSection("Direct messages"));
+    CHECK(h.settings.collapsedMask("slack:T2") == 4);
+    // …and the first one's come back.
+    h.sh->setWorkspaces(h.sh->workspaces(), "slack:T1");
+    h.sh->workspaceChanged();
+    CHECK(h.sidebar().collapsedMask() == 2);
+    // Saved with the settings.
+    shell::Settings s;
+    s.setCollapsedMask("slack:T1", 2);
+    s.setCollapsedMask("slack:T1", 6);
+    s.setCollapsedMask("claude-code:local", 16);
+    CHECK(s.collapsedSections.size() == 2);
+    CHECK(s.collapsedMask("slack:T1") == 6);
+    s.setCollapsedMask("slack:T1", 0);
+    CHECK(s.collapsedSections.size() == 1);
+    CHECK(s.collapsedMask("claude-code:local") == 16);
+}
+
+namespace {
+
+// The names of the conversations shown in section order, '|'-joined.
+std::string shownNames(Harness &h) {
+    std::vector<std::string> names;
+    for (ConvRef c : h.sidebar().shownConversations())
+        names.push_back(h.store.displayName(c));
+    return joined(names);
+}
+
+// The Channels section's conversations, top to bottom.
+std::vector<ConvRef> channelRows(Harness &h) {
+    std::vector<ConvRef> out;
+    for (ConvRef c : h.sidebar().shownConversations()) {
+        const auto &cv = h.store.conversation(c);
+        if (!cv.starred && !cv.isDirect())
+            out.push_back(c);
+    }
+    return out;
+}
+
+void altKey(Harness &h, plat::Key k, bool shift = false) {
+    auto *hooks = app().platform().testHooks();
+    hooks->injectKey(h.win->native(), plat::Key::AltLeft, true);
+    if (shift)
+        hooks->injectKey(h.win->native(), plat::Key::ShiftLeft, true);
+    hooks->injectKey(h.win->native(), k, true);
+    hooks->injectKey(h.win->native(), k, false);
+    if (shift)
+        hooks->injectKey(h.win->native(), plat::Key::ShiftLeft, false);
+    hooks->injectKey(h.win->native(), plat::Key::AltLeft, false);
+    pump(2);
+}
+
+} // namespace
+
+TEST("sidebar: channels A to Z by name; a drag reorders them, kept per workspace") {
+    Harness h;
+    h.sh->setWorkspaces(
+        {{"slack:T1", "T1", "One", "", false}, {"slack:T2", "T2", "Two", "", false}}, "slack:T1"
+    );
+    h.sh->workspaceChanged();
+    pump();
+    std::vector<ConvRef> ch = channelRows(h);
+    REQUIRE(ch.size() >= 3);
+    for (size_t i = 1; i < ch.size(); ++i)
+        CHECK(h.store.displayName(ch[i - 1]) <= h.store.displayName(ch[i]));
+    // The last one dropped on top: saved for this workspace, in its new place.
+    const ConvRef last = ch.back();
+    REQUIRE(h.sidebar().moveRow(last, 0));
+    pump();
+    CHECK(channelRows(h).front() == last);
+    const auto saved = h.settings.sidebarOrderOf("slack:T1", 1);
+    REQUIRE(!saved.empty());
+    CHECK_STR(saved.front(), h.store.conversation(last).id);
+    CHECK(h.settings.sidebarOrderOf("slack:T2", 1).empty());
+    // Another workspace has its own order; coming back restores this one.
+    h.sh->setWorkspaces(h.sh->workspaces(), "slack:T2");
+    h.sh->workspaceChanged();
+    pump();
+    CHECK(channelRows(h).front() == ch.front());
+    h.sh->setWorkspaces(h.sh->workspaces(), "slack:T1");
+    h.sh->workspaceChanged();
+    pump();
+    CHECK(channelRows(h).front() == last);
+    // Saved with the settings file.
+    shell::Settings s;
+    s.setSidebarOrder("slack:T1", 1, {"C1", "C2"});
+    s.setSidebarOrder("slack:T1", 0, {"C9"});
+    s.setSidebarOrder("slack:T1", 1, {"C2", "C1"});
+    CHECK(s.sidebarOrder.size() == 2);
+    CHECK(s.sidebarOrderOf("slack:T1", 1) == std::vector<std::string>({"C2", "C1"}));
+    s.setSidebarOrder("slack:T1", 1, {});
+    CHECK(s.sidebarOrderOf("slack:T1", 1).empty());
+}
+
+TEST("sidebar: dragging a channel row drops it where the pointer lets go") {
+    Harness              h;
+    std::vector<ConvRef> ch = channelRows(h);
+    REQUIRE(ch.size() >= 3);
+    auto *hooks = app().platform().testHooks();
+    auto  move  = [&](ui::PointF p) {
+        hooks->injectPointerMove(h.win->native(), {p.x, p.y});
+        pump(2);
+    };
+    const ui::RectF from = h.sidebar().rowView(ch.back())->windowRect();
+    const ui::RectF to   = h.sidebar().rowView(ch.front())->windowRect();
+    move({from.x + 20, from.y + from.h / 2});
+    hooks->injectButton(h.win->native(), plat::Button::Left, true);
+    pump(2);
+    for (float y = from.y + from.h / 2; y > to.y + 2; y -= 6) // up to the first row's top half
+        move({from.x + 20, y});
+    move({from.x + 20, to.y + 2});
+    hooks->injectButton(h.win->native(), plat::Button::Left, false);
+    pump();
+    CHECK(channelRows(h).front() == ch.back());
+    CHECK(h.sh->current() == ch.back()); // the press opened it too
+}
+
+TEST("sidebar: channel and starred drags survive a roster refresh while held") {
+    for (bool starred : {false, true}) {
+        Harness              h;
+        std::vector<ConvRef> rows;
+        for (ConvRef c : h.sidebar().shownConversations())
+            if (h.store.conversation(c).starred == starred && !h.store.conversation(c).isDirect())
+                rows.push_back(c);
+        REQUIRE(rows.size() >= 2);
+        const ConvRef last  = rows.back();
+        auto         *hooks = app().platform().testHooks();
+        auto          move  = [&](ui::PointF p) {
+            hooks->injectPointerMove(h.win->native(), {p.x, p.y});
+            pump(2);
+        };
+        const ui::RectF from = h.sidebar().rowView(last)->windowRect();
+        const ui::RectF to   = h.sidebar().rowView(rows.front())->windowRect();
+        move({from.x + 20, from.y + from.h / 2});
+        hooks->injectButton(h.win->native(), plat::Button::Left, true);
+        pump(2);
+        move({from.x + 20, from.y + from.h / 2 - 8});
+        // A newly discovered conversation rebuilds the sidebar during the drag.
+        Conversation added;
+        added.id               = "C_DRAG_REFRESH";
+        added.name             = "roster-refresh";
+        added.kind             = ConvKind::Channel;
+        added.member           = true;
+        const ConvRef addedRef = h.store.addConversation(std::move(added));
+        pump();
+        move({from.x + 20, to.y + 2});
+        hooks->injectButton(h.win->native(), plat::Button::Left, false);
+        pump();
+        std::vector<ConvRef> reordered;
+        for (ConvRef c : h.sidebar().shownConversations())
+            if (h.store.conversation(c).starred == starred && !h.store.conversation(c).isDirect())
+                reordered.push_back(c);
+        REQUIRE(!reordered.empty());
+        CHECK(reordered.front() == last);
+        CHECK(h.sidebar().rowState(addedRef).exists);
+    }
+}
+
+TEST("sidebar: a cancelled drag still applies the pending roster refresh") {
+    Harness    h;
+    const auto rows = channelRows(h);
+    REQUIRE(rows.size() >= 2);
+    auto           *hooks = app().platform().testHooks();
+    const ui::RectF from  = h.sidebar().rowView(rows.back())->windowRect();
+    hooks->injectPointerMove(h.win->native(), {from.x + 20, from.y + from.h / 2});
+    hooks->injectButton(h.win->native(), plat::Button::Left, true);
+    pump(2);
+    hooks->injectPointerMove(h.win->native(), {from.x + 20, from.y + from.h / 2 - 8});
+    pump(2);
+    Conversation added;
+    added.id               = "C_DRAG_CANCEL";
+    added.name             = "roster-cancel";
+    added.kind             = ConvKind::Channel;
+    added.member           = true;
+    const ConvRef addedRef = h.store.addConversation(std::move(added));
+    h.win->handle({.type = plat::EventType::FocusOut});
+    hooks->injectPointerMove(h.win->native(), {1100, 700});
+    hooks->injectButton(h.win->native(), plat::Button::Left, false);
+    pump();
+    CHECK(h.sidebar().rowState(addedRef).exists);
+    CHECK(channelRows(h).front() == rows.front());
+}
+
+TEST("sidebar: Option+Up/Down open the row above / below; with Shift, the unread ones") {
+    Harness    h;
+    const auto rows = h.sidebar().shownConversations();
+    REQUIRE(rows.size() >= 3);
+    h.sh->open(rows[1]);
+    pump();
+    h.composer().edit().focus(); // ahead of the composer's own caret keys
+    altKey(h, plat::Key::Down);
+    CHECK(h.sh->current() == rows[2]);
+    altKey(h, plat::Key::Up);
+    altKey(h, plat::Key::Up);
+    CHECK(h.sh->current() == rows[0]);
+    altKey(h, plat::Key::Up); // the top: stays
+    CHECK(h.sh->current() == rows[0]);
+    // Shift: the next unread row below, skipping read ones.
+    const ConvRef unread = h.sidebar().adjacentConversation(1, true);
+    REQUIRE(unread != kNoConv);
+    altKey(h, plat::Key::Down, true);
+    CHECK(h.sh->current() == unread);
+    CHECK(!shownNames(h).empty());
 }
 
 TEST("sidebar: channels outside the relevant days go under \"N more channels\"") {

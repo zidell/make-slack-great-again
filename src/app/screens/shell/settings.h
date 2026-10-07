@@ -67,6 +67,13 @@ struct Settings {
     // cards), per workspace: the keys of the
     // workspaces with it on ("claude-code:local", auth::WorkspaceRecord::key).
     std::vector<std::string> zenWorkspaces;
+    // The sidebar's collapsed sections, per workspace: "<key>=<mask>", one bit
+    // per section kind (Sidebar::collapsedMask); a workspace not listed has
+    // every section open.
+    std::vector<std::string> collapsedSections;
+    // The sidebar's own order, per workspace and section, dragged into place
+    // on this device: "<key>#<section>=<conversation id>,<id>,…".
+    std::vector<std::string> sidebarOrder;
     std::string              trayIconPath; // the picture for the custom tray icon
 
     // ── Composer state ──────────────────────────────────────────────────────
@@ -112,11 +119,17 @@ struct Settings {
     std::vector<RecentDir>                           claudeRecentDirs;
     std::vector<std::pair<std::string, std::string>> claudeTeammateDirs; // role id → folder
 
-    float              fontScale() const { return float(fontSize) / float(kFontPxDefault); }
+    float                    fontScale() const { return float(fontSize) / float(kFontPxDefault); }
     // The palettes and custom palette into the toolkit (ui::setPalette …).
-    void               applyPalettes() const;
-    bool               zenMode(std::string_view workspaceKey) const;
-    void               setZenMode(const std::string &workspaceKey, bool on);
+    void                     applyPalettes() const;
+    bool                     zenMode(std::string_view workspaceKey) const;
+    void                     setZenMode(const std::string &workspaceKey, bool on);
+    uint8_t                  collapsedMask(std::string_view workspaceKey) const;
+    void                     setCollapsedMask(const std::string &workspaceKey, uint8_t mask);
+    std::vector<std::string> sidebarOrderOf(std::string_view workspaceKey, int section) const;
+    void                     setSidebarOrder(
+        const std::string &workspaceKey, int section, const std::vector<std::string> &ids
+    );
     AiProvider        *provider(std::string_view id);
     const AiProvider  *provider(std::string_view id) const;
     // The language AI features answer in: the one picked, else the app

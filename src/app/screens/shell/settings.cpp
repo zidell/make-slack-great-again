@@ -98,6 +98,8 @@ const struct {
     {"spellLanguages", &Settings::spellLanguages},
     {"emojiRecent", &Settings::emojiRecent},
     {"zenWorkspaces", &Settings::zenWorkspaces},
+    {"collapsedSections", &Settings::collapsedSections},
+    {"sidebarOrder", &Settings::sidebarOrder},
 };
 
 const struct {
@@ -168,6 +170,62 @@ void Settings::setZenMode(const std::string &workspaceKey, bool on) {
     std::erase(zenWorkspaces, workspaceKey);
     if (on)
         zenWorkspaces.push_back(workspaceKey);
+}
+
+uint8_t Settings::collapsedMask(std::string_view workspaceKey) const {
+    for (const std::string &e : collapsedSections) {
+        const size_t eq = e.rfind('=');
+        if (eq != std::string::npos && std::string_view(e).substr(0, eq) == workspaceKey)
+            return uint8_t(std::atoi(e.c_str() + eq + 1));
+    }
+    return 0;
+}
+
+void Settings::setCollapsedMask(const std::string &workspaceKey, uint8_t mask) {
+    std::erase_if(collapsedSections, [&](const std::string &e) {
+        const size_t eq = e.rfind('=');
+        return eq != std::string::npos && std::string_view(e).substr(0, eq) == workspaceKey;
+    });
+    if (mask)
+        collapsedSections.push_back(workspaceKey + "=" + std::to_string(int(mask)));
+}
+
+namespace {
+std::string orderPrefix(std::string_view workspaceKey, int section) {
+    return std::string(workspaceKey) + "#" + std::to_string(section) + "=";
+}
+} // namespace
+
+std::vector<std::string>
+Settings::sidebarOrderOf(std::string_view workspaceKey, int section) const {
+    const std::string        prefix = orderPrefix(workspaceKey, section);
+    std::vector<std::string> ids;
+    for (const std::string &e : sidebarOrder)
+        if (e.starts_with(prefix)) {
+            for (std::string_view rest = std::string_view(e).substr(prefix.size());
+                 !rest.empty();) {
+                const size_t comma = rest.find(',');
+                if (const std::string_view id = rest.substr(0, comma); !id.empty())
+                    ids.emplace_back(id);
+                rest =
+                    comma == std::string_view::npos ? std::string_view() : rest.substr(comma + 1);
+            }
+            break;
+        }
+    return ids;
+}
+
+void Settings::setSidebarOrder(
+    const std::string &workspaceKey, int section, const std::vector<std::string> &ids
+) {
+    const std::string prefix = orderPrefix(workspaceKey, section);
+    std::erase_if(sidebarOrder, [&](const std::string &e) { return e.starts_with(prefix); });
+    if (ids.empty())
+        return;
+    std::string e = prefix;
+    for (size_t i = 0; i < ids.size(); ++i)
+        e += (i ? "," : "") + ids[i];
+    sidebarOrder.push_back(std::move(e));
 }
 
 AiProvider *Settings::provider(std::string_view id) {

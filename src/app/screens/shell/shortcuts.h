@@ -62,6 +62,12 @@ enum class Id : uint8_t {
     // Filtered window-wide ahead of the focused view (the composer keeps focus
     // and would take Shift+Del as a delete).
     RemoveIdleSession,
+    // Filtered window-wide too (the composer would move its caret): the
+    // sidebar's rows as shown, the open one's neighbour (Shift: unread only).
+    ConversationAbove,
+    ConversationBelow,
+    UnreadAbove,
+    UnreadBelow,
     // Ctrl+1 … Ctrl+9: the rail's workspaces, top to bottom (installed per
     // digit by the shell; the row stands for all nine).
     SwitchWorkspace,

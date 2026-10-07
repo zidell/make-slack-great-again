@@ -12,6 +12,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <string>
+#include <utility>
 
 namespace ui {
 
@@ -781,7 +782,12 @@ void Window::handle(const plat::Event &e) {
         _active = e.type == T::FocusIn;
         if (!_active) {
             hideTooltip();
-            _capture    = nullptr;
+            if (View *c = std::exchange(_capture, nullptr)) {
+                Event cancelled{EventType::PointerCancel};
+                cancelled.windowPos = _pointer;
+                cancelled.pos       = c->mapFromWindow(_pointer);
+                c->onEvent(cancelled);
+            }
             _buttonHeld = false;
         }
         if (_focus) {

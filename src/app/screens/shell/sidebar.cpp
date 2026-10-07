@@ -519,6 +519,10 @@ public:
         );
     }
 
+    // A press opens the conversation; moved on, it drags the row into a new
+    // place in its section (sidebar_order_impl.h).
+    bool onEvent(Event &e) override { return sidebar.rowEvent(this, e) || SidebarRow::onEvent(e); }
+
     // Everything that depends on Store state.
     void refresh() override {
         const auto &store = sidebar._ctx.store();
@@ -781,6 +785,14 @@ bool Sidebar::relevant(ConvRef ref) const {
 }
 
 void Sidebar::rebuild() {
+    // Roster/presence/filter updates must not destroy the captured row while
+    // the button is held. Read the latest Store state after release/cancel.
+    if (_dragRow) {
+        _rebuildAfterDrag = true;
+        return;
+    }
+    _rebuildAfterDrag = false;
+    dragCancel(); // its row goes
     for (auto *h : _sections)
         _collapsed[h->kind] = h->collapsed; // survives the rebuild
     _items->clearChildren();
@@ -864,6 +876,8 @@ void Sidebar::rebuild() {
     _hiddenChannels = _showAllChannels ? 0 : int(hiddenCh.size());
     if (_showAllChannels)
         lists[1].insert(lists[1].end(), hiddenCh.begin(), hiddenCh.end());
+    for (int s = 0; s < 4; ++s)
+        sortSection(s, lists[s]);
     const bool agents = caps.agentSessions;
     _team = agents ? _ctx.backend.agentRoles() : std::vector<model::Backend::AgentRole>{};
     struct Def {
@@ -887,6 +901,8 @@ void Sidebar::rebuild() {
         h->onClick = [this, h] {
             h->collapsed = !h->collapsed;
             applyCollapse(h);
+            if (onCollapsedChanged)
+                onCollapsedChanged(collapsedMask());
         };
         for (ConvRef c : lists[s]) {
             auto *row    = _items->add<ConvRow>(*this, c);
@@ -931,6 +947,8 @@ void Sidebar::rebuild() {
             t->onClick = [this, t] {
                 t->collapsed = !t->collapsed;
                 applyCollapse(t);
+                if (onCollapsedChanged)
+                    onCollapsedChanged(collapsedMask());
             };
             for (const auto &mate : _team) {
                 auto *row = _items->add<TeammateRow>(*this, mate);
@@ -1051,12 +1069,17 @@ void Sidebar::sectionsSoon() {
     });
 }
 
-// Collapsed, a section lists nothing under its header.
+// Collapsed, a section lists nothing under its header but the open
+// conversation (as Slack does), so opening one never unfolds it.
 void Sidebar::applyCollapse(SectionHeader *h) {
     for (ConvRow *r : h->rows)
-        r->setVisible(!h->collapsed);
-    for (View *v : h->extras)
-        v->setVisible(!h->collapsed);
+        r->setVisible(!h->collapsed || r->conv == _selected);
+    for (View *v : h->extras) {
+        bool open = false; // the open teammate's row
+        for (const TeammateRow *r : _teamRows)
+            open = open || (r == v && !_selectedTeammate.empty() && r->role == _selectedTeammate);
+        v->setVisible(!h->collapsed || open);
+    }
     h->update();
 }
 
@@ -1075,6 +1098,8 @@ void Sidebar::rebuildSoon(bool reveal) {
             return;
         _rebuildTimer = 0;
         rebuild();
+        if (_rebuildAfterDrag)
+            return;
         if (ConvRow *r = rowFor(_selected); r && std::exchange(_revealOnRebuild, false))
             _scroll->ensureVisible(r, 8);
         _revealOnRebuild = false;
@@ -1133,15 +1158,13 @@ void Sidebar::selectTeammate(const std::string &role) {
     }
     _selectedTeammate = role;
     refreshTeammates();
+    // A collapsed Team stays collapsed, listing the open teammate alone.
+    for (SectionHeader *h : _sections)
+        if (h->kind == 4 && h->collapsed)
+            applyCollapse(h);
     for (TeammateRow *r : _teamRows)
-        if (r->role == role) {
-            for (SectionHeader *h : _sections)
-                if (h->kind == 4 && h->collapsed) {
-                    h->collapsed = false;
-                    applyCollapse(h);
-                }
+        if (r->role == role)
             _scroll->ensureVisible(r, 8);
-        }
 }
 
 std::vector<std::string> Sidebar::teammates() const {
@@ -1158,6 +1181,7 @@ Sidebar::TeammateState Sidebar::teammateState(const std::string &role) const {
             s.exists   = true;
             s.bold     = r->unread;
             s.selected = r->checked();
+            s.visible  = r->visible();
             s.presence = int(r->avatar->presence());
         }
     return s;
@@ -1254,13 +1278,13 @@ void Sidebar::select(ConvRef conv) {
     }
     refresh(old);
     // A conversation opened from elsewhere must have a row: selecting it
-    // lists it (relevance, unreads-only, apps) and
-    // expands its section. Rebuilt after the click that got here.
+    // lists it (relevance, unreads-only, apps), shown even in a collapsed
+    // section, which stays collapsed. Rebuilt after the click that got here.
     ConvRow *r = rowFor(conv);
-    if (r && r->section->collapsed) {
-        r->section->collapsed = false;
+    if (ConvRow *o = rowFor(old); o && o->section->collapsed)
+        applyCollapse(o->section);
+    if (r && r->section->collapsed)
         applyCollapse(r->section);
-    }
     if ((conv != kNoConv && !r) || (_filters.unreadsOnly && old != kNoConv && old != conv))
         rebuildSoon(); // the one left may drop out of unreads-only
     if (r) {
@@ -1351,3 +1375,7 @@ Attention workspaceAttention(const model::Store &st, model::NotifyLevel fallback
 }
 
 } // namespace shell
+
+// The fork's sidebar order, drag and drop and folds: here, after the row
+// classes it needs, in a file of its own.
+#include "screens/shell/sidebar_order_impl.h"
