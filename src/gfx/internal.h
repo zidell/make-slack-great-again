@@ -174,7 +174,11 @@ struct PainterImpl {
     static uint32_t           *row32(Painter &p);
     static PaintScratch::Data &scratch(Painter &p) { return (p._lent ? *p._lent : p._own).data(); }
     static float               opacity(const Painter &p) { return p._s.opacity; }
-    static float               scale(const Painter &p) { return p._scale; }
+    // `c` as Painter::setInk has it drawn (glyphs, icons).
+    static Color               inked(const Painter &p, Color c) {
+        return p._s.ink ? (p._s.ink & 0x00ffffffu) | (c & 0xff000000u) : c;
+    }
+    static float  scale(const Painter &p) { return p._scale; }
     static PointF origin(const Painter &p) { return {p._s.tx * p._scale, p._s.ty * p._scale}; }
 };
 

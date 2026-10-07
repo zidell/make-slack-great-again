@@ -24,6 +24,7 @@
 #include "plat/plat.h"
 
 #include <algorithm>
+#include <deque>
 #include <utility>
 
 namespace slack {
@@ -33,6 +34,7 @@ using model::Ts;
 
 namespace {
 
+constexpr int kDeleteRetries   = 6;
 constexpr int kUploadScans     = 6; // history scans for a finished upload
 constexpr int kUploadTimeoutMs = 300000;
 
@@ -502,7 +504,7 @@ struct SlackBackend::Write {
         m.pending = false;
         if (st->undone) { // undo send while in flight: the server copy goes too
             if (m.ts)
-                deleteMessage(st->conv, m.ts, nullptr);
+                queueDelete(st->conv, m.ts, nullptr);
             return st->finish(false, "message_deleted");
         }
         const Ts   ts    = m.ts;
@@ -760,20 +762,61 @@ struct SlackBackend::Write {
     }
 
     // ── Deleting ────────────────────────────────────────────────────────────
-    // chat.delete is idempotent (a repeat answers message_not_found), so it
-    // goes as a read does: an ambiguous failure is sent again, a bounded
-    // number of times. `restore` is the removed copy, put back if Slack
-    // refuses.
-    void deleteMessage(ConvRef conv, Ts ts, std::shared_ptr<model::Message> restore) {
-        b.readCall(
+    // One chat.delete at a time, in the order asked (a bulk delete from the
+    // message list queues dozens): a rate limit holds the queue for Slack's
+    // retry_after instead of failing the ones behind it.
+    // chat.delete is idempotent (a repeat answers message_not_found), so an
+    // ambiguous failure is simply sent again, a bounded number of times.
+    // `restore` is the removed copy, put back if Slack refuses.
+    struct Deletion {
+        ConvRef                         conv;
+        Ts                              ts;
+        std::shared_ptr<model::Message> restore;
+    };
+    std::deque<Deletion> deletions; // waiting behind the one in flight
+    bool                 deleting = false;
+
+    void queueDelete(ConvRef conv, Ts ts, std::shared_ptr<model::Message> restore) {
+        deletions.push_back({conv, ts, std::move(restore)});
+        if (!deleting)
+            nextDelete();
+    }
+
+    void nextDelete() {
+        deleting = !deletions.empty();
+        if (!deleting)
+            return;
+        Deletion d = std::move(deletions.front());
+        deletions.pop_front();
+        deleteAttempt(d.conv, d.ts, 0, std::move(d.restore));
+    }
+
+    void deleteAttempt(ConvRef conv, Ts ts, int attempt, std::shared_ptr<model::Message> restore) {
+        b.api(
             "chat.delete",
             net::formEncode({{"channel", b.convId(conv)}, {"ts", model::formatTs(ts)}}),
-            [this, conv, restore](const json::Document &, const std::string &err) {
-                if (err.empty() || err == "cancelled" || err == "message_not_found")
+            [this, conv, ts, attempt, restore](const json::Document &doc, const std::string &err) {
+                if (err == "cancelled")
+                    return; // the backend is going away
+                if (err == "ratelimited") {
+                    const int64_t secs = std::max<int64_t>(doc.root()["retry_after"].integer(1), 1);
+                    later(int(secs * 1000), [this, conv, ts, attempt, restore] {
+                        deleteAttempt(conv, ts, attempt, restore);
+                    });
                     return;
+                }
+                if (err.empty() || err == "message_not_found")
+                    return nextDelete();
+                if (transient(err) && attempt < kDeleteRetries) {
+                    later(retryBackoffMs(attempt), [this, conv, ts, attempt, restore] {
+                        deleteAttempt(conv, ts, attempt + 1, restore);
+                    });
+                    return;
+                }
                 LOG_WARN("slack", "chat.delete: %s", err.c_str());
                 if (!transient(err) && restore)
                     putBack(conv, std::move(*restore));
+                nextDelete();
             }
         );
     }
@@ -1049,7 +1092,7 @@ void SlackBackend::remove(ConvRef conv, Ts ts) {
     if (const model::Message *m = _store.findMessage(conv, ts))
         restore = std::make_shared<model::Message>(m->clone());
     _store.removeMessage(conv, ts);
-    _write->deleteMessage(conv, ts, std::move(restore));
+    _write->queueDelete(conv, ts, std::move(restore));
 }
 
 // ── Agent thread links ──────────────────────────────────────────────────────

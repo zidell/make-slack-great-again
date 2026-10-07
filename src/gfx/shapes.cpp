@@ -97,7 +97,7 @@ void Painter::blitMask(const Mask8 &m, int physX, int physY, Color c) {
         m,
         int(std::lround(o.x)) + physX,
         int(std::lround(o.y)) + physY,
-        premultiply(c, _s.opacity)
+        premultiply(PainterImpl::inked(*this, c), _s.opacity)
     );
 }
 

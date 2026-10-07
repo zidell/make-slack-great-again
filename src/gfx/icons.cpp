@@ -255,7 +255,7 @@ void drawIcon(Painter &p, Icon icon, RectF r, Color tint) {
         {m->a.data(), m->w, m->h, m->w},
         int(ox) + m->dx,
         int(oy) + m->dy,
-        premultiply(tint, PainterImpl::opacity(p))
+        premultiply(PainterImpl::inked(p, tint), PainterImpl::opacity(p))
     );
 }
 

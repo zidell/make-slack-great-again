@@ -75,6 +75,9 @@ public:
     void        paintOver(gfx::Painter &p) override;
     void        styleChanged() override;
     bool        onEvent(ui::Event &e) override;
+    // Picking (MessageList::picking): the row takes every press itself.
+    ui::View   *hitTest(ui::PointF local) override;
+    bool        picked() const; // a message row, picked
     std::string tooltip() const override;
     ui::RectF   tooltipAnchor() const override;
     bool        tooltipImmediate() const override { return true; }

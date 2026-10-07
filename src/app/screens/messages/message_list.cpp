@@ -568,6 +568,7 @@ MessageList::MessageList(Context &ctx)
         openFileMenu(_fileTs, _filePath, {r.x, r.y + r.h});
     };
     _fileBar->setVisible(false);
+    makePickBar();
 }
 
 void MessageList::toggleSaved(Ts ts) {
@@ -618,6 +619,8 @@ void MessageList::downloadFile(Ts ts, const std::string &path) {
 }
 
 void MessageList::fileHovered(ui::View *v, Ts ts, const std::string &path, bool on) {
+    if (on && _picking)
+        return;
     if (on) {
         const model::Message *m = message(ts);
         if (!m || m->pending)
@@ -689,6 +692,7 @@ void MessageList::subscribe() {
 }
 
 void MessageList::clear() {
+    stopPicking();
     saveAnchor();
     clearSelection();
     if (_observer)
@@ -705,6 +709,7 @@ void MessageList::clear() {
 }
 
 void MessageList::showConversation(ConvRef conv) {
+    stopPicking();
     hideToolbar();
     saveAnchor(); // where the one we leave was left
     _selAnchor = _selFocus = {};
@@ -740,6 +745,7 @@ void MessageList::showConversation(ConvRef conv) {
 }
 
 void MessageList::showThread(ConvRef conv, Ts root) {
+    stopPicking();
     hideToolbar();
     saveAnchor();
     _selAnchor = _selFocus = {};
@@ -987,6 +993,8 @@ void MessageList::onChange(const model::Change &ch) {
     applyOpenTarget();
     applyJump();
     scheduleEdgeCheck();
+    if (_picking)
+        updatePickBar();
 }
 
 namespace {
@@ -1288,6 +1296,7 @@ void MessageList::layout() {
     _state->setFrame(_list->frame());
     _typing->setFrame({16, std::max(0.f, h - _typingH), std::max(0.f, w - 32), _typingH});
     placeToolbar();
+    placePickBar();
     applyOpenTarget(); // the first layout knows the height a third of which it needs
 }
 
@@ -1335,6 +1344,8 @@ void MessageList::hideToolbar() {
 }
 
 void MessageList::rowHovered(MessageRow *row, bool on) {
+    if (on && _picking) // a click picks; no actions on the row
+        return;
     if (on) {
         if (_toolbarRow == row)
             return;
@@ -1409,6 +1420,10 @@ bool MessageList::onEvent(ui::Event &e) {
             clearSelection();
         return true;
     case ui::EventType::KeyDown:
+        if (_picking && e.key == plat::Key::Escape && !e.mods) {
+            stopPicking();
+            return true;
+        }
         if (!hasSelection())
             return false;
         if (e.key == plat::Key::C && (e.mods & plat::primaryMod()) &&
@@ -1702,11 +1717,7 @@ std::vector<ui::MenuItem> MessageList::menuItems(Ts ts) const {
     // moves, and a thread only opens where one exists (a subagent run or a
     // /btw branch) — "Reply in thread" where it takes replies.
     const bool   agent     = _ctx.backend.isAgentSession(_conv);
-    // Deletable: my own messages, or any as a workspace admin — any
-    // at all in an agent session (deleteAnyMessage) — and only when the
-    // backend can take this one now (not while the session is working).
-    const bool   canDelete = (agent || mine || (st.me != model::kNoUser && st.user(st.me).admin)) &&
-                             _ctx.backend.canDeleteMessage(_conv, ts);
+    const bool   canDelete = this->canDelete(*m);
     if (_root == 0 && !m->isReply()) {
         if (!agent)
             addItem(items, kReply);

@@ -819,9 +819,13 @@ public:
     // the $LANGUAGE list, then $LC_ALL, $LC_MESSAGES or $LANG.
     virtual std::vector<std::string> preferredLanguages() const;
 
-    virtual bool darkMode() const              = 0;
-    virtual int  doubleClickMs() const         = 0;
-    virtual bool openUrl(std::string_view url) = 0;
+    virtual bool                darkMode() const              = 0;
+    virtual int                 doubleClickMs() const         = 0;
+    virtual bool                openUrl(std::string_view url) = 0;
+    // Whether the button is held on the device right now — ahead of the
+    // events still queued (a release the app has not read yet). nullopt: the
+    // backend cannot tell.
+    virtual std::optional<bool> buttonHeld(Button b) const { return std::nullopt; }
 
     // Native input injection for tests (plat/testing.h); null when the
     // backend has no way to synthesise input through the OS, and always null

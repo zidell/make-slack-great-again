@@ -276,9 +276,10 @@ public:
     std::string           selectAsciiInputSource() override;
     void                  selectInputSource(std::string_view id) override;
 
-    bool darkMode() const override;
-    int  doubleClickMs() const override;
-    bool openUrl(std::string_view url) override;
+    bool                darkMode() const override;
+    int                 doubleClickMs() const override;
+    bool                openUrl(std::string_view url) override;
+    std::optional<bool> buttonHeld(Button b) const override;
 
     // Round 3 (cocoa_services.mm).
     std::vector<Monitor> monitors() const override;

@@ -1848,7 +1848,17 @@ void MessageRow::paint(gfx::Painter &p) {
         p.setOpacity(0.5f);
     if (_reminded) // a reminder tints the whole row
         p.fillRect(bounds(), bannerColor(2));
-    if (_list.flashing(_ts))
+    if (picked()) {
+        // Picking: dark, the system highlight with the text and icons white
+        // (the ink lasts through the children, until the tree's restore);
+        // light, the light selection blue under the usual text.
+        if (ui::app()->dark()) {
+            p.fillRect(bounds(), ui::systemHighlight());
+            p.setInk(0xffffffffu);
+        } else {
+            p.fillRect(bounds(), ui::color(C::Selection));
+        }
+    } else if (_list.flashing(_ts))
         p.fillRect(bounds(), ui::color(C::MentionBg));
     else if (hovered() || _list.toolbarRow() == this)
         p.fillRect(bounds(), ui::color(C::SurfaceHover));
@@ -1891,6 +1901,8 @@ void MessageRow::paint(gfx::Painter &p) {
 }
 
 void MessageRow::paintOver(gfx::Painter &p) {
+    if (picked())
+        return;
     // The dismiss "×" (1.15× the app font, message.attachmentDismiss).
     const ui::RectF r = dismissRect();
     if (r.w <= 0)
@@ -1964,14 +1976,35 @@ bool MessageRow::onEvent(ui::Event &e) {
         return false;
     }
     case ui::EventType::PointerDown:
+        if (_list.picking()) {
+            if (e.button != plat::Button::Left)
+                return false;
+            if (_kind == kRowFull || _kind == kRowGrouped)
+                _list.pickClicked(_ts, e.mods & plat::ModShift);
+            return true;
+        }
         if (e.button == plat::Button::Left && dismissRect().contains(e.pos)) {
             _list.dismissAttachment(_ts, size_t(_attach));
             return true;
         }
         return false;
+    case ui::EventType::ContextMenu:
+        // A long press (no raw event; a right click has one) starts picking.
+        if (e.raw || _list.picking() || (_kind != kRowFull && _kind != kRowGrouped))
+            return false;
+        _list.startPicking(_ts);
+        return _list.picking();
     default:
         return false; // no menu on right click (the toolbar's "…" has it)
     }
+}
+
+bool MessageRow::picked() const {
+    return (_kind == kRowFull || _kind == kRowGrouped) && _list.picked(_ts);
+}
+
+ui::View *MessageRow::hitTest(ui::PointF local) {
+    return _list.picking() ? this : ui::View::hitTest(local);
 }
 
 } // namespace screens

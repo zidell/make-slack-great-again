@@ -649,6 +649,25 @@ void testGradient() {
     CHECK(alphaAt(t, 0, 0) < 20 && alphaAt(t, 9, 0) > 235);
 }
 
+void testInk() {
+    // setInk: glyph masks (and icons) in its colour at their own alpha, until
+    // restore(); fills keep theirs.
+    const uint8_t a[2] = {255, 128};
+    const Mask8   m{a, 2, 1, 2};
+    Bitmap        b(3, 1);
+    Painter       p(b.view(), 1);
+    p.save();
+    p.setInk(0xffffffffu);
+    p.blitMask(m, 0, 0, 0xff102030u);
+    p.fillRect({2, 0, 1, 1}, 0xff102030u);
+    p.restore();
+    CHECK_PX(px(b, 0, 0), 0xffffffffu);
+    CHECK(alphaAt(b, 1, 0) == 128 && (px(b, 1, 0) & 255) == 128);
+    CHECK_PX(px(b, 2, 0), 0xff102030u);
+    p.blitMask(m, 0, 0, 0xff102030u); // restored: its own colour
+    CHECK_PX(px(b, 0, 0), 0xff102030u);
+}
+
 void testShadow() {
     Bitmap  b(60, 60);
     Painter p(b.view(), 1);
@@ -1614,29 +1633,18 @@ struct Group {
     void (*fn)();
 };
 const Group kGroups[] = {
-    {"blend", testBlend},
-    {"fill", testFill},
-    {"clip", testClip},
-    {"roundrect", testRoundRect},
-    {"path", testPath},
-    {"stroke", testStroke},
-    {"bitmap", testBitmap},
-    {"blit", testBlit},
-    {"gradient", testGradient},
-    {"shadow", testShadow},
-    {"decode", testDecode},
-    {"anim", testAnim},
-    {"animbudget", testAnimBudget},
-    {"snapped", testSnapped},
-    {"icons", testIcons},
-    {"paint2", testPaint2},
-    {"svg", testSvg},
-    {"svgsize", testSvgSize},
-    {"svgfuzz", testSvgFuzz},
-    {"cover", testCover},
-    {"resizeaxes", testResizeAxes},
-    {"scratch", testScratch},
-    {"svglayers", testSvgLayers},
+    {"blend", testBlend},       {"fill", testFill},
+    {"clip", testClip},         {"roundrect", testRoundRect},
+    {"path", testPath},         {"stroke", testStroke},
+    {"bitmap", testBitmap},     {"blit", testBlit},
+    {"gradient", testGradient}, {"ink", testInk},
+    {"shadow", testShadow},     {"decode", testDecode},
+    {"anim", testAnim},         {"animbudget", testAnimBudget},
+    {"snapped", testSnapped},   {"icons", testIcons},
+    {"paint2", testPaint2},     {"svg", testSvg},
+    {"svgsize", testSvgSize},   {"svgfuzz", testSvgFuzz},
+    {"cover", testCover},       {"resizeaxes", testResizeAxes},
+    {"scratch", testScratch},   {"svglayers", testSvgLayers},
 };
 
 } // namespace

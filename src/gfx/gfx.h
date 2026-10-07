@@ -175,6 +175,10 @@ public:
     void  restore();
     void  translate(float dx, float dy);
     void  setOpacity(float o); // multiplies everything drawn until restore()
+    // Text glyphs and icons in this colour (its RGB, their own alpha) until
+    // restore(); 0 = their own. Fills, images and colour emoji are untouched:
+    // content over a selection highlight.
+    void  setInk(Color c) { _s.ink = c; }
     // Intersects the current clip. Rounded clips are anti-aliased (avatars,
     // image cards).
     void  clipRect(RectF r);
@@ -233,6 +237,7 @@ private:
         int   clipX0 = 0, clipY0 = 0, clipX1 = 0, clipY1 = 0; // physical, rect part
         float opacity   = 1.0f;
         int   roundClip = -1; // index into _roundClips, -1 = none
+        Color ink       = 0;  // setInk
     };
     BitmapView         _target;
     int                _ox = 0, _oy = 0; // physical position of the target's first pixel

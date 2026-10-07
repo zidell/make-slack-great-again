@@ -1287,6 +1287,88 @@ TEST("actions: the message menu, item for item, acts through the backend") {
     }
 }
 
+TEST("picking: a long press picks, clicks and Shift+clicks add, Delete removes them all") {
+    Env                         e(false);
+    const int64_t               t0 = base::nowSecs() - 3600;
+    std::vector<model::Message> ms;
+    ms.push_back(msg(0, t0, "a"));
+    ms.push_back(msg(1, t0 + 400, "not mine"));
+    ms.push_back(msg(0, t0 + 800, "b"));
+    ms.push_back(msg(0, t0 + 1200, "c"));
+    ms.push_back(msg(0, t0 + 1600, "d"));
+    const ConvRef c = addConv(e.store, std::move(ms));
+    e.list->showConversation(c);
+    pump(8);
+    const Ts a = Ts(t0) * 1000000, other = Ts(t0 + 400) * 1000000, b = Ts(t0 + 800) * 1000000,
+             cc = Ts(t0 + 1200) * 1000000, d = Ts(t0 + 1600) * 1000000;
+
+    // A long press on a row (a ContextMenu without a raw event) starts it;
+    // a right click (raw set) does not.
+    ui::View *row = e.row(a);
+    REQUIRE(row != nullptr);
+    plat::Event rightClick{};
+    ui::Event   cm{ui::EventType::ContextMenu};
+    cm.raw = &rightClick;
+    CHECK_FALSE(row->onEvent(cm));
+    CHECK_FALSE(e.list->picking());
+    cm.raw = nullptr;
+    CHECK(row->onEvent(cm));
+    CHECK(e.list->picking());
+    CHECK(e.list->pickedMessages() == std::vector<Ts>{a});
+    // While picking a row takes every press (no links, images, buttons).
+    CHECK(row->hitTest({10, 10}) == row);
+
+    // Someone else's message is not picked; Shift+click takes the range
+    // without it; a click toggles.
+    e.list->pickClicked(other, false);
+    CHECK(e.list->pickedMessages() == std::vector<Ts>{a});
+    e.list->pickClicked(cc, true);
+    CHECK(e.list->pickedMessages() == (std::vector<Ts>{a, b, cc}));
+    e.list->pickClicked(b, false);
+    CHECK(e.list->pickedMessages() == (std::vector<Ts>{a, cc}));
+
+    // Delete: no dialog, every picked message goes; picking ends.
+    e.list->deletePicked();
+    CHECK(e.win->topPopup() == nullptr);
+    pump(2);
+    CHECK(e.store.findMessage(c, a) == nullptr);
+    CHECK(e.store.findMessage(c, cc) == nullptr);
+    CHECK(e.store.findMessage(c, b) != nullptr);
+    CHECK(e.store.findMessage(c, other) != nullptr);
+    CHECK_FALSE(e.list->picking());
+
+    // At most kMaxPicked: a range stops there, counted from its anchor.
+    {
+        Env                         e2(false);
+        std::vector<model::Message> many;
+        for (int i = 0; i < 60; ++i)
+            many.push_back(msg(0, t0 + i * 400, "m"));
+        const ConvRef c2 = addConv(e2.store, std::move(many));
+        e2.list->showConversation(c2);
+        pump(8);
+        const Ts last = Ts(t0 + 59 * 400) * 1000000;
+        e2.list->startPicking(last);
+        e2.list->pickClicked(Ts(t0) * 1000000, true);
+        CHECK(e2.list->pickedMessages().size() == MessageList::kMaxPicked);
+        CHECK(e2.list->picked(last));
+        CHECK_FALSE(e2.list->picked(Ts(t0) * 1000000));
+        e2.list->pickClicked(Ts(t0) * 1000000, false); // a click past it: nothing
+        CHECK(e2.list->pickedMessages().size() == MessageList::kMaxPicked);
+    }
+
+    // Escape ends it, and so does opening a conversation.
+    e.list->startPicking(d);
+    REQUIRE(e.list->picking());
+    ui::Event esc{ui::EventType::KeyDown};
+    esc.key = plat::Key::Escape;
+    CHECK(e.list->onEvent(esc));
+    CHECK_FALSE(e.list->picking());
+    e.list->startPicking(d);
+    e.list->showConversation(c);
+    CHECK_FALSE(e.list->picking());
+    CHECK(e.store.findMessage(c, d) != nullptr);
+}
+
 TEST("actions: Save for later and Remind me need messageReminders (session tokens)") {
     // An OAuth workspace has no saved.* — no items, no toolbar Save.
     Env           e(true);

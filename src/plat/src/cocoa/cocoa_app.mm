@@ -541,6 +541,16 @@ int CocoaApp::doubleClickMs() const {
     return int(std::lround(NSEvent.doubleClickInterval * 1000));
 }
 
+std::optional<bool> CocoaApp::buttonHeld(Button b) const {
+    // The device's state, not the event stream's; bit n = buttonNumber n.
+    const int bit = b == Button::Left     ? 0
+                    : b == Button::Right  ? 1
+                    : b == Button::Middle ? 2
+                    : b == Button::Back   ? 3
+                                          : 4;
+    return (NSEvent.pressedMouseButtons >> bit & 1) != 0;
+}
+
 bool CocoaApp::openUrl(std::string_view url) {
     @autoreleasepool {
         // nsString() answers "" for bytes that are not UTF-8: no URL then.

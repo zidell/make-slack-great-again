@@ -64,7 +64,7 @@ msgstr "表示"
 msgid "Hide"
 msgstr "非表示"
 
-#: src/ui/controls.cpp src/ui/filebrowser.cpp src/app/screens/messages/message_dialogs.cpp src/app/screens/settings/settings_pages.cpp src/app/screens/shell/composer.cpp src/app/screens/shell/composer_popups.cpp src/app/screens/shell/scheduled_page.cpp src/app/screens/shell/session_dialogs.cpp src/app/screens/shell/shell_dialogs.cpp src/app/screens/shell/signin_dialogs.cpp src/app/screens/shell/status_dialog.cpp
+#: src/ui/controls.cpp src/ui/filebrowser.cpp src/app/screens/messages/message_dialogs.cpp src/app/screens/messages/message_list.cpp src/app/screens/settings/settings_pages.cpp src/app/screens/shell/composer.cpp src/app/screens/shell/composer_popups.cpp src/app/screens/shell/scheduled_page.cpp src/app/screens/shell/session_dialogs.cpp src/app/screens/shell/shell_dialogs.cpp src/app/screens/shell/signin_dialogs.cpp src/app/screens/shell/status_dialog.cpp
 msgid "Cancel"
 msgstr "キャンセル"
 
@@ -842,7 +842,7 @@ msgstr "メッセージを削除"
 msgid "This action cannot be undone."
 msgstr "この操作は元に戻せません。"
 
-#: src/app/screens/messages/message_dialogs.cpp
+#: src/app/screens/messages/message_dialogs.cpp src/app/screens/messages/message_list.cpp
 msgid "Delete"
 msgstr "削除"
 
@@ -1121,6 +1121,23 @@ msgstr "3時間後"
 #: src/app/screens/messages/message_list.cpp
 msgid "Next week"
 msgstr "来週"
+
+#: src/app/screens/messages/message_list.cpp
+msgid "Select messages to delete"
+msgstr "削除するメッセージを選択"
+
+#: src/app/screens/messages/message_list.cpp
+msgid "%1 selected (the most at once)"
+msgstr "%1 件選択中（一度に選べる上限）"
+
+#: src/app/screens/messages/message_list.cpp
+msgid "%n selected"
+msgid_plural "%n selected"
+msgstr[0] "%n 件選択中"
+
+#: src/app/screens/messages/message_list.cpp
+msgid "Delete %1"
+msgstr "%1 件を削除"
 
 #: src/app/screens/messages/message_list.cpp
 msgid "Delete image…"
@@ -3961,6 +3978,10 @@ msgstr "ダウンロードした更新ファイルが破損しています（チ
 
 #~ msgid "Ask agent…"
 #~ msgstr "エージェントに質問…"
+#~ msgid "Delete %n message?"
+#~ msgid_plural "Delete %n messages?"
+#~ msgstr[0] "%n 件のメッセージを削除しますか？"
+
 #~ msgid "Small"
 #~ msgstr "小"
 

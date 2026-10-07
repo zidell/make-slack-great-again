@@ -22,9 +22,13 @@
 //    (thumbnails, GIFs animated, click → in-window viewer), file chips, link
 //    previews and legacy attachments, bot/app names;
 //  - a hover toolbar (react, reply in thread, more) whose "…" opens the
-//    message menu (so do right click, long press and the Menu key on the
-//    row); right click on a link opens the link menu, on an image or a file
-//    the file menu;
+//    message menu; right click on a link opens the link menu, on an image
+//    or a file the file menu;
+//  - picking: a long press on a message picks it and turns clicks into
+//    picks (click toggles, Shift+click takes the range from the last one
+//    clicked) — only messages I may delete, at most kMaxPicked; the bar at the
+//    bottom right deletes them all at once (no dialog) or cancels, as do
+//    Escape and opening another conversation;
 //  - a typing line under the list ("Mira is typing…");
 //  - text selection across messages (drag; double click a word, triple
 //    click a line), copied with Ctrl/Cmd+C, cleared by Escape or a click;
@@ -108,6 +112,21 @@ public:
     void        select(TextPos anchor, TextPos focus);
     // The position under a window point (ts 0: not over message text).
     TextPos     textPosAt(ui::PointF windowPos) const;
+
+    // ── Picking (bulk delete) ───────────────────────────────────────────────
+    // At most this many at once (Slack takes about 50 chat.delete a minute);
+    // a click or a range past it picks nothing more.
+    static constexpr size_t kMaxPicked = 50;
+    bool                    picking() const { return _picking; }
+    bool                    picked(Ts ts) const { return has(_picked, ts); }
+    const std::vector<Ts>  &pickedMessages() const { return _picked; } // in pick order
+    void                    startPicking(Ts ts); // a long press on the message
+    void                    pickClicked(Ts ts, bool range);
+    void                    stopPicking();
+    void                    deletePicked(); // the bar's Delete: all of them, now
+    // Mine (or any as a workspace admin, any in an agent session), and the
+    // backend can take it now; not pending.
+    bool                    canDelete(const model::Message &m) const;
 
     // Scroll so the message is visible (search hits, permalinks); `flash`
     // briefly highlights it.
@@ -264,6 +283,12 @@ private:
     void placeFileBar();
     bool applyJump();
 
+    // Picking (message_pick.cpp).
+    void makePickBar();
+    void placePickBar();
+    void updatePickBar(); // its count and Delete; drops picks that are gone
+    void repaintRows();
+
 public:
     std::vector<Ts> threadRoots(Ts except) const; // for "Move to thread…"
 
@@ -356,6 +381,14 @@ private:
     std::vector<Ts>            _inlineThreads;
     std::vector<Key>           _dismissed, _folded, _expanded;
     std::vector<CanvasPreview> _canvasPreviews;
+
+    // Picking (message_pick.cpp).
+    bool            _picking = false;
+    std::vector<Ts> _picked;
+    Ts              _pickAnchor = 0; // Shift+click's range starts here
+    ui::View       *_pickBar    = nullptr;
+    ui::Label      *_pickCount  = nullptr;
+    ui::Button     *_pickDelete = nullptr;
 };
 
 } // namespace screens

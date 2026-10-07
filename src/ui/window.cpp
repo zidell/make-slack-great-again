@@ -571,7 +571,11 @@ void Window::pointerDown(const plat::Event &pe) {
 
 void Window::longPress() {
     _longPressTimer = 0;
-    View *t         = _buttonHeld ? hitAt(_pointer) : nullptr;
+    // A busy main thread can run the timer before it reads the release that
+    // is already queued: ask the device whether the button is still down.
+    const bool held =
+        _buttonHeld && app()->platform().buttonHeld(plat::Button::Left).value_or(true);
+    View *t = held ? hitAt(_pointer) : nullptr;
     if (!t)
         return;
     ++_depth;
