@@ -1344,8 +1344,6 @@ bool Composer::send() {
         }
     }
     withdrawUndo(); // a new send supersedes the offer
-    const std::string              html  = _edit->empty() ? std::string() : _edit->html();
-    const std::vector<std::string> files = _files;
     const bool broadcast = _files.empty() && _key.thread && broadcastWanted && broadcastWanted();
     if (!_files.empty())
         _ctx.backend.sendWithFiles(_key.conv, text, _key.thread, std::move(_files), nullptr);
@@ -1357,7 +1355,6 @@ bool Composer::send() {
         _ctx.backend.sendBroadcast(_key.conv, text, _key.thread, nullptr);
     else
         _ctx.backend.send(_key.conv, text, _key.thread, nullptr);
-    offerUndo(html, files); // the pending copy is in the Store: what an undo deletes
     _files.clear();
     rebuildChips();
     _edit->clear();
