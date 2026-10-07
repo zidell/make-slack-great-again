@@ -1,0 +1,8 @@
+# Rebasing the fork onto upstream (AGENTS.md): the compiled-in translation
+# table is never merged by hand. The side already in place is kept
+# (git config merge.ours.driver true) and `python3 src/tools/i18n.py update`
+# regenerates it once the rebase is done.
+src/app/i18n/languages_generated.cpp merge=ours
+# Both sides add and retire entries (obsolete #~ ones pile up at the end):
+# keep both; `i18n.py update` reconciles them by msgid.
+src/app/i18n/*.po merge=union
