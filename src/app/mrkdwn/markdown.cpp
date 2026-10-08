@@ -515,7 +515,11 @@ Composed compose(std::string_view composer, bool alwaysBlocks) {
     bool                     sectionOpen   = false; // the last chunk is a Section taking lines
     int                      pendingBlanks = 0;     // blank lines since its last line
     bool                     anyList       = false;
+    // Blank lines around a list, code or quote: the text before ends in them
+    // ("a\n\n", or a list's last item) or the section after starts with them.
     const auto               closeSection  = [&] {
+        if (sectionOpen && pendingBlanks)
+            chunks.back().text += std::string(size_t(pendingBlanks) + 1, '\n');
         sectionOpen   = false;
         pendingBlanks = 0;
     };
@@ -652,7 +656,12 @@ Composed compose(std::string_view composer, bool alwaysBlocks) {
         if (sectionOpen) {
             chunks.back().text += std::string(size_t(pendingBlanks) + 1, '\n') + conv;
         } else {
-            chunks.push_back({ChunkKind::Section, conv, {}});
+            std::string gap(chunks.empty() ? 0 : size_t(pendingBlanks), '\n');
+            if (!gap.empty() && chunks.back().kind == ChunkKind::List) {
+                chunks.back().items.back().text += gap; // the list's last item ends in them
+                gap.clear();
+            }
+            chunks.push_back({ChunkKind::Section, gap + conv, {}});
             sectionOpen = true;
         }
         pendingBlanks = 0;

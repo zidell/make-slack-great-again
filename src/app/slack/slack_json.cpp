@@ -716,10 +716,15 @@ model::Message toMessage(const json::Value &in, model::Store &store) {
     }
     std::vector<model::Block> structure = toBlocks(blocks);
     m.text                              = owned(o["text"]);
-    if (richer || m.text.empty()) {
+    // Posted with blocks, a message's `text` can come back with its line
+    // breaks turned into spaces: then the blocks, when they have lines, are
+    // the text.
+    const bool flat                     = blocks.size() && m.text.find('\n') == std::string::npos;
+    if (richer || m.text.empty() || flat) {
         std::string fromBlocks =
             structure.empty() ? blocksToMrkdwn(blocks) : structureMrkdwn(structure);
-        if (!fromBlocks.empty())
+        if (!fromBlocks.empty() &&
+            (richer || m.text.empty() || fromBlocks.find('\n') != std::string::npos))
             m.text = std::move(fromBlocks);
     }
 

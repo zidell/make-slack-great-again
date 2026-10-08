@@ -604,7 +604,8 @@ uint32_t walkBody(
             RichLabel *l = nullptr;
             if (parent) {
                 auto *row = parent->add<ui::View>();
-                row->style().row().margins(float(bl.indent) * 22, 0, 0, 0);
+                // The marker sits on the item's first line.
+                row->style().row().items(ui::Align::Start).margins(float(bl.indent) * 22, 0, 0, 0);
                 std::string marker = bl.ordinal ? str::number(bl.ordinal) + "." : "•";
                 auto       *m      = row->add<ui::Label>(std::move(marker), o.font, o.color);
                 m->style().width(22).noShrink();
