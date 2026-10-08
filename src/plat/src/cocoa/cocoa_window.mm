@@ -757,7 +757,9 @@ constexpr NSEventModifierFlags kDevLCtrl = 0x0001, kDevLShift = 0x0002, kDevRShi
     NSView *content = self.contentView;
     NSView *frame   = content.superview; // theme frame: hitTest: takes window coords
     NSView *hit     = [frame hitTest:ev.locationInWindow];
-    if (!hit || hit == content || [hit isDescendantOf:content])
+    // The theme frame itself answers along the window's edges (~3 pt in):
+    // its resize band, which AppKit has to keep.
+    if (!hit || hit == frame || hit == content || [hit isDescendantOf:content])
         return NO;
     for (NSView *v = hit; v; v = v.superview)
         if ([v isKindOfClass:[NSControl class]]) // close / minimise / zoom
