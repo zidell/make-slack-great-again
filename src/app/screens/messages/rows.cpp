@@ -8,6 +8,7 @@
 #include "app/screens/common/message_text.h"
 #include "app/screens/common/tag_badge.h"
 #include "app/screens/messages/audio_card.h"
+#include "app/screens/messages/doc_viewer.h"
 #include "app/screens/messages/rich.h"
 #include "app/screens/messages/table_view.h"
 #include "base/file.h"
@@ -1513,7 +1514,9 @@ void MessageRow::buildFile(ui::View *col, const model::File &f, Ts ts) {
     // A chip click: an HTML file renders in the browser (fetched to a
     // local copy), anything else opens its Slack page (else the file).
     chip->onClick          = [this, file] {
-        if (file.isHtml() && !file.path.empty())
+        if (isDocFile(file) && _list.window())
+            showDocViewer(_list.ctx(), *_list.window(), file); // read in place
+        else if (file.isHtml() && !file.path.empty())
             _list.openHtmlFile(file);
         else if (_list.ctx().openUrl) {
             const std::string &url = file.permalink.empty() ? file.path : file.permalink;

@@ -15,6 +15,9 @@ add_library(msga_screens_messages STATIC
     message_dialogs.cpp
     summary.cpp
 )
+# The fork's: .md / .txt files read in place (doc_viewer.h), Markdown rendered
+# as Claude Code's answers are.
+target_sources(msga_screens_messages PRIVATE doc_viewer.cpp)
 # The scroll torture test (msga --debug-scroll): demo workspace only.
 if(MSGA_DEMO)
     target_sources(msga_screens_messages PRIVATE debug_scroll.cpp)
@@ -24,6 +27,7 @@ target_include_directories(msga_screens_messages PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/../../..
     ${CMAKE_CURRENT_SOURCE_DIR}/../..)
 target_link_libraries(msga_screens_messages PUBLIC msga_screens_common msga_app_core msga_app_llm msga_ui msga_flags)
+target_link_libraries(msga_screens_messages PRIVATE msga_app_claude)
 
 # MessageList + ThreadPanel on demo/fixture.json, without the shell.
 if(MSGA_DEMO)

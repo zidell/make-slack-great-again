@@ -9,8 +9,8 @@
 //   Reminder         "When" (a date, today or later) and "Time" (now + 1 h,
 //                    rounded up to 5 min) → Backend::setReminder
 //   Table viewer     a CSV (≤ 400 rows) or a message's table as a data
-//                    table on the viewer backdrop; Esc or a click outside
-//                    closes it
+//                    table on the viewer backdrop; Esc or a click
+//                    (on the table too) closes it
 #pragma once
 
 #include "app/screens/messages/context_fwd.h"

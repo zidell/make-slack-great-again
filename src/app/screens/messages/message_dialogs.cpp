@@ -474,9 +474,10 @@ public:
             update();
         };
         switch (e.type) {
-        case ui::EventType::PointerDown:
-            if (!c.contains(e.pos))
-                close();
+        case ui::EventType::PointerDown: // held, so the release can't reach what is below
+            return true;
+        case ui::EventType::PointerUp: // a click anywhere closes it, as one opened it
+            close();
             return true;
         case ui::EventType::Scroll:
             to(_scroll - e.dy * (e.precise ? 1.f : 40.f) / 2);

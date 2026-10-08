@@ -774,7 +774,7 @@ msgstr "%1 · %2による文字起こし"
 msgid "Transcript (auto-generated)"
 msgstr "文字起こし（自動生成）"
 
-#: src/app/screens/messages/audio_card.cpp
+#: src/app/screens/messages/audio_card.cpp src/app/screens/messages/doc_viewer.cpp
 msgid "Loading…"
 msgstr "読み込み中…"
 
@@ -794,7 +794,7 @@ msgstr "一時停止"
 msgid "Play"
 msgstr "再生"
 
-#: src/app/screens/messages/audio_card.cpp src/app/screens/messages/message_list.cpp src/app/update/updater.cpp
+#: src/app/screens/messages/audio_card.cpp src/app/screens/messages/doc_viewer.cpp src/app/screens/messages/message_list.cpp src/app/update/updater.cpp
 msgid "Downloading %1"
 msgstr "%1をダウンロード中"
 
@@ -813,6 +813,26 @@ msgstr "文字起こしにはAIプロバイダーが必要です。設定 → AI
 #: src/app/screens/messages/audio_card.cpp
 msgid "Could not read the file"
 msgstr "ファイルを読み込めませんでした"
+
+#: src/app/screens/messages/doc_viewer.cpp src/app/screens/messages/message_list.cpp src/app/screens/shell/canvas_viewer.cpp
+msgid "Open in browser"
+msgstr "ブラウザで開く"
+
+#: src/app/screens/messages/doc_viewer.cpp src/app/screens/messages/message_list.cpp src/app/screens/settings/settings_dialog.cpp src/app/screens/shell/canvas_viewer.cpp src/app/screens/shell/session_status_dialog.cpp src/app/screens/shell/shell.cpp
+msgid "Close"
+msgstr "閉じる"
+
+#: src/app/screens/messages/doc_viewer.cpp
+msgid "This file is too large to preview."
+msgstr "このファイルは大きすぎてプレビューできません。"
+
+#: src/app/screens/messages/doc_viewer.cpp
+msgid "Could not read the file."
+msgstr "ファイルを読み込めませんでした。"
+
+#: src/app/screens/messages/doc_viewer.cpp src/app/update/updater.cpp
+msgid "Download failed: %1"
+msgstr "ダウンロードに失敗しました: %1"
 
 #: src/app/screens/messages/emoji_picker.cpp
 msgid "Search all emoji"
@@ -926,17 +946,9 @@ msgstr "ダウンロード"
 msgid "Forward"
 msgstr "転送"
 
-#: src/app/screens/messages/message_list.cpp src/app/screens/shell/canvas_viewer.cpp
-msgid "Open in browser"
-msgstr "ブラウザで開く"
-
 #: src/app/screens/messages/message_list.cpp
 msgid "More actions"
 msgstr "その他の操作"
-
-#: src/app/screens/messages/message_list.cpp src/app/screens/settings/settings_dialog.cpp src/app/screens/shell/canvas_viewer.cpp src/app/screens/shell/session_status_dialog.cpp src/app/screens/shell/shell.cpp
-msgid "Close"
-msgstr "閉じる"
 
 #: src/app/screens/messages/message_list.cpp
 msgid "No messages yet"
@@ -3993,10 +4005,6 @@ msgstr "このプラットフォームでは自動アップデートはサポー
 #: src/app/update/updater.cpp
 msgid "Could not parse version manifest."
 msgstr "バージョンマニフェストを解析できませんでした。"
-
-#: src/app/update/updater.cpp
-msgid "Download failed: %1"
-msgstr "ダウンロードに失敗しました: %1"
 
 #: src/app/update/updater.cpp
 msgid "Downloaded update is corrupt (checksum mismatch)."
