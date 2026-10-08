@@ -3131,10 +3131,10 @@ void Shell::showQuickSwitcher() {
         if (w.store != &_ctx.store()) // the open one's comes in below
             tabs.back().order = quickSwitchOrder(*w.store, _sidebar->visited());
     }
-    auto p = std::make_unique<QuickSwitcher>(
-        _ctx, _avatars, quickSwitchOrder(_ctx.store(), _sidebar->visited()), std::move(tabs)
-    );
-    auto *raw       = p.get();
+    auto order = quickSwitchOrder(_ctx.store(), _sidebar->visited());
+    std::erase(order, _current); // fork: the open chat isn't a place to switch to
+    auto  p   = std::make_unique<QuickSwitcher>(_ctx, _avatars, std::move(order), std::move(tabs));
+    auto *raw = p.get();
     raw->onChooseIn = [this](const std::string &key, ConvRef conv) {
         // The same path as a notification's click: the workspace, then the chat.
         if (onSwitchWorkspace)
