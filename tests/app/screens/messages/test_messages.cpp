@@ -1303,13 +1303,13 @@ TEST("picking: a long press picks, clicks and Shift+clicks add, Delete removes t
              cc = Ts(t0 + 1200) * 1000000, d = Ts(t0 + 1600) * 1000000;
 
     // A long press on a row (a ContextMenu without a raw event) starts it;
-    // a right click (raw set) does not.
+    // a right click (raw set) opens the message menu instead.
     ui::View *row = e.row(a);
     REQUIRE(row != nullptr);
     plat::Event rightClick{};
     ui::Event   cm{ui::EventType::ContextMenu};
     cm.raw = &rightClick;
-    CHECK_FALSE(row->onEvent(cm));
+    CHECK(row->onEvent(cm));
     CHECK_FALSE(e.list->picking());
     cm.raw = nullptr;
     CHECK(row->onEvent(cm));
@@ -1646,7 +1646,9 @@ TEST("actions: a remote CSV's Preview downloads it to a temporary file, removed 
     CHECK_FALSE(file::exists(e.backend.asked.back().to));
 }
 
-TEST("actions: hovering an avatar asks for the profile card; right click on the row is nothing") {
+TEST(
+    "actions: hovering an avatar asks for the profile card; right click on the row opens its menu"
+) {
     Env            e(true);
     const ConvRef  eng      = e.conv("C0ENG");
     model::UserRef hovered  = model::kNoUser;
@@ -1671,7 +1673,7 @@ TEST("actions: hovering an avatar asks for the profile card; right click on the 
     h->injectButton(e.win->native(), plat::Button::Right, true);
     h->injectButton(e.win->native(), plat::Button::Right, false);
     pump(4);
-    CHECK(e.win->topPopup() == nullptr);
+    CHECK(e.win->topPopup() != nullptr);
 }
 
 TEST("actions: the hover toolbar — react, forward, save, more; save toggles") {
@@ -1796,7 +1798,7 @@ TEST("actions: the robot asks an agent, active on a linked thread; its menu item
     CHECK(menuLabels(e.list->menuItems(last.ts)).find("agent") == std::string::npos);
 }
 
-TEST("actions: the file bar on hovered files; right click on them does nothing") {
+TEST("actions: the file bar on hovered files; right click on them opens the file menu") {
     Env           e(true);
     const ConvRef general = e.conv("C0GENERAL");
     std::string   shared;
@@ -1842,7 +1844,7 @@ TEST("actions: the file bar on hovered files; right click on them does nothing")
     h->injectButton(e.win->native(), plat::Button::Right, true);
     h->injectButton(e.win->native(), plat::Button::Right, false);
     pump(2);
-    CHECK(e.win->topPopup() == nullptr);
+    CHECK(e.win->topPopup() != nullptr);
 }
 
 TEST("actions: the delete, move to thread and reminder dialogs and the CSV viewer") {

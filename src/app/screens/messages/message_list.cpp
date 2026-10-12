@@ -1866,6 +1866,13 @@ void MessageList::openMenu(Ts ts, ui::PointF at) {
     });
 }
 
+void MessageList::openRowMenu(Ts ts, ui::PointF at) {
+    if (_fileView && _fileTs == ts && _fileView->hovered())
+        openFileMenu(ts, _filePath, at);
+    else
+        openMenu(ts, at);
+}
+
 void MessageList::openFileMenu(Ts ts, const std::string &path, ui::PointF at) {
     if (!window() || !message(ts) || message(ts)->pending)
         return;

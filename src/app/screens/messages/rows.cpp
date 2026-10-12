@@ -1994,13 +1994,18 @@ bool MessageRow::onEvent(ui::Event &e) {
         }
         return false;
     case ui::EventType::ContextMenu:
-        // A long press (no raw event; a right click has one) starts picking.
-        if (e.raw || _list.picking() || (_kind != kRowFull && _kind != kRowGrouped))
+        // A right click (raw event) opens the "…" menu; a long press (none)
+        // starts picking.
+        if (_list.picking() || (_kind != kRowFull && _kind != kRowGrouped))
             return false;
+        if (e.raw) {
+            _list.openRowMenu(_ts, e.windowPos);
+            return true;
+        }
         _list.startPicking(_ts);
         return _list.picking();
     default:
-        return false; // no menu on right click (the toolbar's "…" has it)
+        return false;
     }
 }
 

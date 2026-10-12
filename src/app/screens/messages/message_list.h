@@ -178,6 +178,9 @@ public:
     int                   rowBinds() const { return _rowBinds; }
     bool                  flashing(Ts ts) const { return ts == _flashTs; }
     void                  openMenu(Ts ts, ui::PointF windowPos);
+    // A right click on a row: the hovered file's menu over a file, else the
+    // message's ("…") menu.
+    void                  openRowMenu(Ts ts, ui::PointF windowPos);
     // The menus as data, and what their items do (tests drive these). Items,
     // order, wording and icons are in message_list.cpp.
     enum MenuId : int {
