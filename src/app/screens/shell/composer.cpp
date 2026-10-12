@@ -2379,7 +2379,22 @@ void loadMrkdwn(TextEdit &edit, const model::Store &store, std::string_view text
         } else if (giphy(head)) {
             display = lab.empty() ? std::string(tr("GIF")) : i18n::arg(tr("GIF \xC2\xB7 %1"), lab);
         }
-        if (display.empty()) { // any other <url|label> stays literal
+        // A URL token loses its brackets: the bare URL (Slack links it
+        // again on send) when it shows itself or sits in code, else its
+        // label linked to it.
+        std::string_view bare = head;
+        for (std::string_view scheme : {"https://", "http://", "mailto:"})
+            if (bare.starts_with(scheme))
+                bare.remove_prefix(scheme.size());
+        const bool inCode = std::count(text.begin(), text.begin() + lt, '`') % 2 == 1;
+        if (display.empty() && mrkdwn::looksLikeUrl(head) &&
+            (inCode || lab.empty() || lab == head || lab == bare)) {
+            plain += mrkdwn::decodeEntities(lab.empty() ? head : lab);
+        } else if (display.empty() && mrkdwn::looksLikeUrl(head)) {
+            const uint32_t from = uint32_t(plain.size());
+            plain += mrkdwn::decodeEntities(lab);
+            pills.push_back({from, uint32_t(plain.size()), std::string(head)});
+        } else if (display.empty()) { // any other <…> stays literal
             plain += tok;
         } else {
             const uint32_t from = uint32_t(plain.size());

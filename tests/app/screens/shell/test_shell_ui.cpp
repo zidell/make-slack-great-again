@@ -1391,6 +1391,20 @@ TEST("composer: a mention pill shows the name as Settings → Names does") {
     }
 }
 
+TEST("composer: an edit loads URL tokens without their brackets") {
+    Harness h;
+    auto   &c = h.composer();
+    shell::loadMrkdwn(c.edit(), h.store, "see <https://x.test/p> and <https://x.test|x.test>");
+    CHECK_STR(c.edit().text(), "see https://x.test/p and x.test");
+    // A label of its own stays, linked to the URL.
+    shell::loadMrkdwn(c.edit(), h.store, "read <https://x.test/p|the doc> &amp; more");
+    CHECK_STR(c.edit().text(), "read the doc & more");
+    CHECK_STR(c.mrkdwn(), "read <https://x.test/p|the doc> & more");
+    // Inside code the text Slack wrapped, bare.
+    shell::loadMrkdwn(c.edit(), h.store, "`curl <https://x.test/p>` <not a url>");
+    CHECK_STR(c.edit().text(), "`curl https://x.test/p` <not a url>");
+}
+
 TEST("composer: @ lists people and @channel & co.; a pick is a pill that sends the token") {
     Harness h;
     auto   &c = h.composer();
