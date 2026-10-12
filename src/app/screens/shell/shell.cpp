@@ -1082,6 +1082,13 @@ void Shell::wireAgentUi() {
         runCommand(_thread->composer->conv(), _thread->composer->thread(), name, args);
     };
     _thread->composer->setPopupArea(_thread->panel); // its popups stay inside the panel
+    // Escape in the thread's composer closes the thread (focus: the channel's).
+    _thread->composer->onEscape = [this] {
+        if (!threadOpen())
+            return false;
+        closeThread();
+        return true;
+    };
     // "Open as session": a branched agent thread moves to the list.
     _thread->panel->onOpenAsSession = [this](ConvRef conv, Ts root) {
         const ConvRef session = _ctx.backend.openThreadAsSession(conv, root);

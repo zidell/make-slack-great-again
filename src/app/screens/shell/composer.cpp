@@ -828,6 +828,8 @@ bool Composer::keyDown(const Event &e) {
         endEdit();
         return true;
     }
+    if (e.key == plat::Key::Escape && !mods && onEscape && onEscape())
+        return true;
     static constexpr Id kFormatKeys[] = {
         Id::Bold,
         Id::Italic,

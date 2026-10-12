@@ -232,6 +232,9 @@ public:
     // Set: Enter / Send call it instead of sending (the
     // forward dialog's composer).
     std::function<bool()> onSendRequest;
+    // Escape left over (no dictation, pick list or edit mode took it):
+    // true = handled (the thread panel's composer closes the thread).
+    std::function<bool()> onEscape;
 
 private:
     void rebuildChips();

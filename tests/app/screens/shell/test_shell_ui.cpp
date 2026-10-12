@@ -1466,6 +1466,23 @@ TEST("composer: # lists channels, : completes emoji") {
     CHECK(c.edit().text().find(":xq_bcdq:") != std::string::npos);
 }
 
+TEST("thread: Escape in its composer closes it and focuses the channel's") {
+    Harness       h;
+    const ConvRef design = h.conv("C0DESIGN");
+    h.sh->open(design);
+    h.sh->openThread(design, h.backend.findTs(design, "Proposal B"));
+    pump();
+    shell::Composer *tc = h.sh->threadComposer();
+    tc->edit().focus();
+    tc->edit().insertText("draft");
+    auto *hooks = app().platform().testHooks();
+    hooks->injectKey(h.win->native(), plat::Key::Escape, true);
+    hooks->injectKey(h.win->native(), plat::Key::Escape, false);
+    pump(2);
+    CHECK_FALSE(h.sh->threadOpen());
+    CHECK(h.composer().edit().focused());
+}
+
 TEST("composer: editing shows the banner; Escape and its cross leave it") {
     Harness       h;
     const ConvRef design = h.conv("C0DESIGN");
