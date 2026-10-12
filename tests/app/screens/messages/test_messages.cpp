@@ -1287,6 +1287,27 @@ TEST("actions: the message menu, item for item, acts through the backend") {
     }
 }
 
+TEST("reply in thread: the menu item opens the thread and asks for its composer") {
+    Env           e(true);
+    const ConvRef eng = e.conv("C0DESIGN");
+    e.list->showConversation(eng);
+    pump(8);
+    Ts root = 0;
+    for (const model::Message &m : e.store.conversation(eng).messages)
+        if (m.replyCount > 0)
+            root = m.ts;
+    REQUIRE(root != 0);
+    int focused             = 0;
+    e.list->onReplyInThread = [&] { ++focused; };
+    using M                 = MessageList;
+    e.list->runMenuAction(root, M::kReply);
+    CHECK(focused == 1);
+    CHECK(!e.threads.empty() && e.threads.back().second == root);
+    // "Open thread" (no replies allowed) only opens it.
+    e.list->runMenuAction(root, M::kOpenThread);
+    CHECK(focused == 1);
+}
+
 TEST("picking: a long press picks, clicks and Shift+clicks add, Delete removes them all") {
     Env                         e(false);
     const int64_t               t0 = base::nowSecs() - 3600;

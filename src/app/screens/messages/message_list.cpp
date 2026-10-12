@@ -1486,6 +1486,12 @@ void MessageList::reply(Ts ts) {
         _ctx.openThread(_conv, ts);
 }
 
+void MessageList::replyInThread(Ts ts) {
+    reply(ts);
+    if (onReplyInThread)
+        onReplyInThread();
+}
+
 void MessageList::openReactionPicker(Ts ts, ui::RectF anchor) {
     if (!window())
         return;
@@ -1912,6 +1918,8 @@ void MessageList::runMenuAction(Ts ts, int id, const std::string &path, ui::Poin
     }
     switch (id) {
     case kReply:
+        replyInThread(ts);
+        break;
     case kOpenThread:
         reply(ts);
         break;

@@ -138,6 +138,9 @@ public:
 
     // "Reply in thread" from the toolbar or menu (default: Context::openThread).
     std::function<void(ConvRef, Ts)> onReply;
+    // After "Reply in thread" / "Reply to thread" opened the thread (not
+    // the reply bar or "Open thread"): the shell focuses its composer.
+    std::function<void()>            onReplyInThread;
     // "Edit message" on one's own message; unset = no Edit item. The shell's
     // composer handles the editing itself.
     std::function<void(ConvRef, Ts)> onEdit;
@@ -235,6 +238,7 @@ public:
     void pressButton(Ts ts, const std::string &buttonId, ui::PointF windowPos);
     void showToast(const std::string &text, int ms, ui::PointF windowPos);
     void reply(Ts ts);
+    void replyInThread(Ts ts);
 
     // ── Internal (rows): state the rows read and the actions they take ─────
     void               applySelection(MessageRow &row) const;

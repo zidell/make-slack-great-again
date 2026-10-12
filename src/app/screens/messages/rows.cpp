@@ -1804,7 +1804,7 @@ void MessageRow::buildInlineThread(ui::View *col, const model::Message &root) {
     }
     auto    *foot = box->add<FooterLink>(tr("Reply to thread"));
     const Ts ts   = root.ts;
-    foot->onClick = [this, ts] { _list.reply(ts); };
+    foot->onClick = [this, ts] { _list.replyInThread(ts); };
 }
 
 void MessageRow::attachHovered(int index, ui::View *card, bool on) {

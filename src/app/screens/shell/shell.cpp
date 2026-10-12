@@ -949,6 +949,10 @@ Shell::Shell(screens::Context &ctx, Window &win, Settings &settings, std::string
             _composer->beginEdit(ts);
     };
     _thread->panel->list().onEdit = [this](ConvRef, Ts ts) { _thread->composer->beginEdit(ts); };
+    static_cast<screens::MessageList *>(_messages)->onReplyInThread = [this] {
+        if (threadOpen())
+            _thread->composer->edit().focus();
+    };
 #endif
     wireAgentUi();
 
