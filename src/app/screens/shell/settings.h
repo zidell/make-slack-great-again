@@ -11,6 +11,7 @@
 // a new setting is one line there and one member here.
 #pragma once
 
+#include "fork_font_limits.h"
 #include "ui/ui.h"
 
 #include <cstdint>
@@ -45,7 +46,7 @@ struct Settings {
     ui::CustomPalette        custom;
     // The body text size in px (App::setUserTextScale, relative to Body's
     // 15 px); Settings and Cmd/Ctrl +/-/0 change it.
-    static constexpr int     kFontPxMin = 13, kFontPxMax = 18, kFontPxDefault = 15;
+    static constexpr int     kFontPxMin = 13, kFontPxMax = fork::kFontPxMax, kFontPxDefault = 15;
     int                      fontSize = kFontPxDefault;
     std::string              language = "system"; // "system", "en", "ja"
     bool                     use24h = false, threadsInline = false, linkPreviews = true;
