@@ -560,7 +560,9 @@ void WlWindow::onConfigure(uint32_t serial) {
     _configured        = true;
     const bool resized = s.w != _size.w || s.h != _size.h;
     _size              = s;
-    if (resized)
+    // The initial fractional scale may arrive before configure, while size
+    // stays unchanged. Notify the UI so text and caret use the buffer scale.
+    if (first || resized)
         emitEvent({.type = EventType::Resized});
     if (stateChanged)
         emitEvent({.type = EventType::StateChanged});
