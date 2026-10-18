@@ -14,6 +14,7 @@
 #include "plat/plat.h"
 #include "support/test.h"
 
+#include <algorithm>
 #include <cstdio>
 #include <functional>
 #include <memory>
