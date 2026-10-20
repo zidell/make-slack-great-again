@@ -491,7 +491,7 @@ TEST("settings: color mode and theme cards apply and persist at once") {
     file::remove(path);
 }
 
-TEST("settings: the text size applies at once, in px from 13 to 18") {
+TEST("settings: the text size applies at once, within the configured px limits") {
     const std::string path = testPath();
     file::remove(path);
     Harness         h(path);
@@ -504,12 +504,12 @@ TEST("settings: the text size applies at once, in px from 13 to 18") {
     CHECK(size->value() == 17);
     CHECK(h.settings.fontSize == 17);
     CHECK(app().userTextScale() > 1.1f);
-    for (int i = 0; i < 6; ++i)
+    for (int i = 0; i <= shell::Settings::kFontPxMax; ++i)
         h.key(plat::Key::Up);
-    CHECK(h.settings.fontSize == 18);
-    for (int i = 0; i < 9; ++i)
+    CHECK(h.settings.fontSize == shell::Settings::kFontPxMax);
+    for (int i = 0; i <= shell::Settings::kFontPxMax; ++i)
         h.key(plat::Key::Down);
-    CHECK(h.settings.fontSize == 13);
+    CHECK(h.settings.fontSize == shell::Settings::kFontPxMin);
     CHECK(app().userTextScale() < 0.9f);
     app().setUserTextScale(1.f);
     file::remove(path);
@@ -522,7 +522,7 @@ TEST("settings: a file from before the px sizes keeps its size") {
     REQUIRE(file::writeAtomic(path, R"({"fontSize": 0})"));
     CHECK(shell::Settings::load(path).fontSize == 14);
     REQUIRE(file::writeAtomic(path, R"({"fontPx": 40})"));
-    CHECK(shell::Settings::load(path).fontSize == 18);
+    CHECK(shell::Settings::load(path).fontSize == shell::Settings::kFontPxMax);
     file::remove(path);
 }
 

@@ -46,9 +46,10 @@ struct Settings {
     ui::CustomPalette        custom;
     // The body text size in px (App::setUserTextScale, relative to Body's
     // 15 px); Settings and Cmd/Ctrl +/-/0 change it.
-    static constexpr int     kFontPxMin = 13, kFontPxMax = fork::kFontPxMax, kFontPxDefault = 15;
-    int                      fontSize = kFontPxDefault;
-    std::string              language = "system"; // "system", "en", "ja"
+    static constexpr int     kFontPxMin = fork::kFontPxMin, kFontPxMax = fork::kFontPxMax,
+                             kFontPxDefault = 15;
+    int                      fontSize       = kFontPxDefault;
+    std::string              language       = "system"; // "system", "en", "ja"
     bool                     use24h = false, threadsInline = false, linkPreviews = true;
     // use24h came from the file; without it the clock follows the language
     // (Japanese convention is 24-hour).

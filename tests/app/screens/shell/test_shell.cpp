@@ -1664,14 +1664,14 @@ TEST("workspace rail: Cmd/Ctrl+1-9 switch to the rail's workspaces in order") {
     REQUIRE(switched.size() == 1);
     CHECK_STR(switched[0], kClaudeKey);
 
-    // Cmd/Ctrl +/-/0: the text size, a px at a time, within 13-18.
+    // Cmd/Ctrl +/-/0: the text size, a px at a time, within the configured limits.
     CHECK(h.settings.fontSize == 15);
     chord(plat::Key::Equal);
     CHECK(h.settings.fontSize == 16);
     CHECK(app().userTextScale() > 1.f);
     for (int i = 0; i < 9; ++i)
         chord(plat::Key::Minus);
-    CHECK(h.settings.fontSize == 13);
+    CHECK(h.settings.fontSize == shell::Settings::kFontPxMin);
     chord(plat::Key::Num0);
     CHECK(h.settings.fontSize == 15);
     CHECK(app().userTextScale() == 1.f);
