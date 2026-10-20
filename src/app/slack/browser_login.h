@@ -1,4 +1,6 @@
 // "Sign in with <browser>" for Slack session auth:
+// Linux opens the regular browser and imports its Slack session read-only
+// (fork_regular_browser_login.cpp). Other platforms use the CDP flow below:
 // launches a Chromium-family browser on a throwaway profile at Slack's
 // sign-in page, then reads the `d` cookie — and, when the web client boots,
 // the signed-in workspaces with their xoxc- tokens — over the DevTools
@@ -50,7 +52,7 @@ public:
         std::function<void(std::string cookie, std::vector<TeamSession> teams, std::string error)>;
 
     BrowserLogin(plat::App &app, net::Client &client);
-    ~BrowserLogin(); // aborts: closes the browser, wipes the profile; no callback
+    ~BrowserLogin(); // aborts; the regular Linux browser is never closed or wiped
 
     // done runs exactly once (later, on the UI thread).
     void start(std::function<void(std::string)> progress, Done done);
@@ -61,6 +63,13 @@ public:
 private:
     using Handler = std::function<void(const json::Value &result, bool ok)>;
 
+#ifdef __linux__
+    void                  startRegular(const std::string &exe);
+    void                  pollRegular();
+    bool                  _regular = false, _regularReading = false;
+    std::string           _regularExe;
+    std::shared_ptr<char> _regularAlive;
+#endif
     void probe();
     void openCdp(const std::string &wsUrl);
     void poll();

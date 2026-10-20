@@ -99,7 +99,11 @@ add_subdirectory(spell)
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     target_sources(msga_app_slack PRIVATE
         slack/local_import_linux.cpp
+        slack/fork_browser_import.cpp
+        slack/fork_regular_browser_login.cpp
         slack/sqlite_reader.cpp)
+    find_package(SQLite3 REQUIRED)
+    target_link_libraries(msga_app_slack PRIVATE SQLite::SQLite3)
     find_package(PkgConfig QUIET)
     if(PkgConfig_FOUND)
         pkg_check_modules(APP_DBUS IMPORTED_TARGET dbus-1)

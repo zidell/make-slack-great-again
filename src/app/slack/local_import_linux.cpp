@@ -10,6 +10,7 @@
 // Chromium (cookie meta version >= 24) prepends SHA-256(host_key) to the
 // plaintext; we strip it when it matches.
 #include "app/slack/local_import.h"
+#include "app/slack/fork_browser_import.h"
 #include "app/slack/session.h"
 #include "app/slack/sqlite_reader.h"
 #include "base/crypto.h"
@@ -88,7 +89,7 @@ std::string readByteArray(DBusMessageIter *it) {
 // usual case in an active session); we never drive an unlock prompt, and
 // every call has a short timeout so a button click never hangs. Empty on
 // failure.
-std::string secretServicePassword() {
+std::string secretServicePassword(const char *application) {
     constexpr int kTimeoutMs = 1500;
     const char   *kService   = "org.freedesktop.secrets";
     const char   *kRoot      = "/org/freedesktop/secrets";
@@ -164,7 +165,7 @@ std::string secretServicePassword() {
         dbus_message_iter_init_append(msg, &args);
         dbus_message_iter_open_container(&args, DBUS_TYPE_ARRAY, "{ss}", &dict);
         dbus_message_iter_open_container(&dict, DBUS_TYPE_DICT_ENTRY, nullptr, &entry);
-        const char *k = "application", *v = "Slack";
+        const char *k = "application", *v = application;
         dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &k);
         dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &v);
         dbus_message_iter_close_container(&dict, &entry);
@@ -229,14 +230,14 @@ std::string secretServicePassword() {
 }
 
 #else  // no libdbus: only v10 cookies can be decrypted
-std::string secretServicePassword() {
+std::string secretServicePassword(const char *application) {
     return {};
 }
 #endif // MSGA_HAS_DBUS
 
 // Decrypt one Chromium encrypted_value for host `hostKey`. v11 tries the
 // keyring password first, then falls back to "peanuts" (v10 / no keyring).
-std::string decryptCookie(std::string_view enc, std::string_view hostKey) {
+std::string decryptCookie(std::string_view enc, std::string_view hostKey, const char *application) {
     if (enc.size() < 3)
         return {};
     const std::string_view prefix = enc.substr(0, 3);
@@ -244,7 +245,7 @@ std::string decryptCookie(std::string_view enc, std::string_view hostKey) {
 
     std::vector<std::string> passwords;
     if (prefix == "v11") {
-        std::string kr = secretServicePassword();
+        std::string kr = secretServicePassword(application);
         if (!kr.empty())
             passwords.push_back(std::move(kr));
     }
@@ -295,27 +296,19 @@ bool localImportSupported() {
     return true;
 }
 
-LocalImport importLocalSession() {
-    LocalImport result;
-
-    std::string configDir, cookieDb;
-    for (const std::string &dir : slackConfigDirs()) {
-        const std::string db = findCookieDb(dir);
-        if (!db.empty()) {
-            configDir = dir;
-            cookieDb  = db;
-            break;
-        }
-    }
+LocalImport
+importChromiumProfile(const std::string &configDir, const char *application, bool browser) {
+    LocalImport       result;
+    const std::string cookieDb = findCookieDb(configDir);
     if (cookieDb.empty()) {
         result.error = "not_installed";
         return result;
     }
-
     // Read the encrypted `d` cookie straight from the file (read-only, no lock
     // taken, so Slack's own DB handle is never disturbed). A Slack mid-write
     // reads as Busy and, like an unreadable file, is reported as "locked".
-    const SqliteTable cookies = readSqliteTable(cookieDb, "cookies");
+    const SqliteTable cookies =
+        browser ? readBrowserCookies(cookieDb) : readSqliteTable(cookieDb, "cookies");
     if (cookies.error != SqliteTable::Error::None && cookies.error != SqliteTable::Error::NoTable) {
         result.error = "locked";
         return result;
@@ -327,7 +320,13 @@ LocalImport importLocalSession() {
     if (host >= 0 && name >= 0 && value >= 0) {
         for (const auto &row : cookies.rows) {
             if (row[name].text() == "d" &&
-                row[host].text().find("slack.com") != std::string::npos) {
+                (row[host].text() == ".slack.com" || row[host].text() == "slack.com")) {
+                const int plainColumn = cookies.columnIndex("value");
+                if (plainColumn >= 0 && str::startsWith(row[plainColumn].text(), "xoxd-")) {
+                    result.cookie = row[plainColumn].text();
+                    result.teams  = discoverWorkspaces(configDir);
+                    return result;
+                }
                 enc     = row[value].text();
                 hostKey = row[host].text();
                 break;
@@ -339,7 +338,7 @@ LocalImport importLocalSession() {
         return result;
     }
 
-    const std::string cookie = decryptCookie(enc, hostKey);
+    const std::string cookie = decryptCookie(enc, hostKey, application);
     if (cookie.empty()) {
         result.error = "decrypt_failed";
         return result;
@@ -347,6 +346,15 @@ LocalImport importLocalSession() {
 
     result.cookie = cookie;
     result.teams  = discoverWorkspaces(configDir);
+    return result;
+}
+
+LocalImport importLocalSession() {
+    for (const std::string &dir : slackConfigDirs())
+        if (!findCookieDb(dir).empty())
+            return importChromiumProfile(dir, "Slack", false);
+    LocalImport result;
+    result.error = "not_installed";
     return result;
 }
 

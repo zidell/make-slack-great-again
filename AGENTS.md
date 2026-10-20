@@ -29,3 +29,5 @@
   - `slack: … delivery` 실시간/폴링 전환 시점, `… never sent` / `… ahead of the stream` 안전망 폴링이 스트림 누락을 잡은 기록(채널 id, 몇 개, 몇 초 늦었는지)
   - `app: woke from sleep` / `network online|offline` 슬립·네트워크 이벤트
   - 이벤트 하나하나까지 보려면 `MSGA_LOG=debug`로 실행한다(`MSGA_LOG=debug build/msga.app/Contents/MacOS/msga`).
+
+- Linux는 X11과 Wayland를 함께 지원한다. MSGA 글자 크기 하한은 9px이며 설정 화면·키보드 확대/축소·저장값에 같은 범위를 적용한다. 기본 Chrome 로그인은 평소 프로필의 일반 탭을 열고 그 프로필의 Slack 세션만 읽는다. 원격 디버깅·시크릿/게스트/임시 프로필로 바꾸지 않고, 완료·취소·앱 종료 시 사용자의 Chrome을 닫거나 지우지 않는다. 활성 Chrome의 WAL 데이터는 시스템 SQLite의 읽기 전용 스냅샷으로 읽는다. 개인 브라우저/Slack 계정으로 자동 입력 시험하지 않으며 가짜 프로필·브라우저로 수명주기를 검사한다.

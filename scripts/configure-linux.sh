@@ -62,6 +62,7 @@ APT_PACKAGES=(
     libxcb-xfixes0-dev
     libxcb-xinput-dev
     libxcb-xtest0-dev    # test builds only: input injection
+    libsqlite3-dev       # read the regular browser cookie store, including live WAL snapshots
     libdbus-1-dev        # tray, notifications, portals
 )
 if [[ $RELEASE -eq 1 ]]; then

@@ -3819,7 +3819,7 @@ msgstr "整えています…"
 msgid "Opening %1…"
 msgstr "%1 を開いています…"
 
-#: src/app/slack/browser_login.cpp
+#: src/app/slack/browser_login.cpp src/app/slack/fork_regular_browser_login.cpp
 msgid "Sign in to Slack in the browser window — msga picks it up automatically."
 msgstr "ブラウザウィンドウでSlackにサインインしてください — msgaが自動的に受け取ります。"
 

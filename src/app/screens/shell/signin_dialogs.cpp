@@ -156,8 +156,8 @@ private:
     void startBrowserLogin() {
         setBusy(true);
         setStatus(tr("Opening a browser window\xE2\x80\xA6"), false);
-        // A fresh one per attempt; owned here, so closing the dialog kills the
-        // browser and wipes its throwaway profile.
+        // Owned here: closing the dialog cancels the import. Linux leaves the
+        // regular browser running; temporary CDP profiles are cleaned up.
         _browser = std::make_unique<slack::BrowserLogin>(_ctx.app.platform(), _client);
         _browser->start(
             [this](std::string msg) { setStatus(msg, false); },

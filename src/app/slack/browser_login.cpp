@@ -247,7 +247,11 @@ BrowserLogin::~BrowserLogin() {
     // Last resort: the scheduled wipes never run when the app is quitting
     // right now, so take the profile (and the cookie in it) out at once.
     // Kill first — a browser still shutting down recreates files.
+#ifdef __linux__
+    if (!_regular && _proc && _proc->running())
+#else
     if (_proc && _proc->running())
+#endif
         _proc->kill(true);
     wipeNow(_profile);
 }
@@ -267,6 +271,10 @@ void BrowserLogin::start(std::function<void(std::string)> progress, Done done) {
         _app.post([this] { finish({}, {}, "no_browser"); });
         return;
     }
+#ifdef __linux__
+    startRegular(b.exe);
+    return;
+#endif
     _profile = makeProfileDir(_app);
     _port    = net::freeLoopbackPort();
     if (_profile.empty() || _port == 0) {
@@ -627,6 +635,9 @@ void BrowserLogin::finish(std::string cookie, std::vector<TeamSession> teams, st
 }
 
 void BrowserLogin::shutdown() {
+#ifdef __linux__
+    _regularAlive.reset();
+#endif
     for (uint64_t *t : {&_probeTimer, &_pollTimer, &_exitTimer})
         if (*t) {
             _app.cancelTimer(*t);
