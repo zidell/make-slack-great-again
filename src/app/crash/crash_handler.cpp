@@ -61,7 +61,9 @@
 #if defined(__linux__)
 // The executable's ELF header (= its load address) and the end of its code,
 // from the linker (GNU ld and lld both provide them).
-extern "C" char __ehdr_start[] __attribute__((weak));
+// A weak reference can resolve through a null GOT slot in PIE executables.
+// Both supported Linux linkers provide this symbol when it is required.
+extern "C" char __ehdr_start[];
 extern "C" char etext[] __attribute__((weak));
 #endif
 
@@ -196,7 +198,7 @@ void contextRegs(void *uc, const void **pc, const uintptr_t **sp) {
 // (stale ones included), resolvable with addr2line like the frames.
 void writeStackScan(int fd, const uintptr_t *sp) {
 #if defined(__linux__)
-    if (!sp || !__ehdr_start || !etext)
+    if (!sp || !etext)
         return;
     const auto lo = reinterpret_cast<uintptr_t>(__ehdr_start);
     const auto hi = reinterpret_cast<uintptr_t>(etext);

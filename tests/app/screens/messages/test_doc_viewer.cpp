@@ -28,7 +28,7 @@ ui::App &app() {
     return *a;
 }
 
-model::File file(std::string name, std::string mime) {
+model::File documentFile(std::string name, std::string mime) {
     model::File f;
     f.name = std::move(name);
     f.mime = std::move(mime);
@@ -38,15 +38,15 @@ model::File file(std::string name, std::string mime) {
 } // namespace
 
 TEST("doc viewer: Markdown and plain text files, nothing else") {
-    CHECK(screens::isDocFile(file("CMS_분석.md", "text/plain")));
-    CHECK(screens::isDocFile(file("README.MARKDOWN", "")));
-    CHECK(screens::isDocFile(file("notes", "text/markdown")));
-    CHECK(screens::isDocFile(file("log.txt", "text/plain")));
-    CHECK(screens::isDocFile(file("snippet", "text/plain")));
-    CHECK_FALSE(screens::isDocFile(file("data.csv", "text/csv")));
-    CHECK_FALSE(screens::isDocFile(file("page.html", "text/html")));
-    CHECK_FALSE(screens::isDocFile(file("main.cpp", "text/plain"))); // code: its own extension
-    CHECK_FALSE(screens::isDocFile(file("report.pdf", "application/pdf")));
+    CHECK(screens::isDocFile(documentFile("CMS_분석.md", "text/plain")));
+    CHECK(screens::isDocFile(documentFile("README.MARKDOWN", "")));
+    CHECK(screens::isDocFile(documentFile("notes", "text/markdown")));
+    CHECK(screens::isDocFile(documentFile("log.txt", "text/plain")));
+    CHECK(screens::isDocFile(documentFile("snippet", "text/plain")));
+    CHECK_FALSE(screens::isDocFile(documentFile("data.csv", "text/csv")));
+    CHECK_FALSE(screens::isDocFile(documentFile("page.html", "text/html")));
+    CHECK_FALSE(screens::isDocFile(documentFile("main.cpp", "text/plain"))); // code: its own extension
+    CHECK_FALSE(screens::isDocFile(documentFile("report.pdf", "application/pdf")));
 }
 
 TEST("doc viewer: headings split the bodies, fenced code keeps its #") {
