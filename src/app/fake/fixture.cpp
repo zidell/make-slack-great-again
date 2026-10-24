@@ -122,7 +122,7 @@ model::Attachment attachmentFrom(json::Value o, const std::string &dir) {
         a.imageHeight = int32_t(o["height"].integer(h));
     }
     for (json::Value fv : o["fields"])
-        a.fields.push_back(model::AttachmentField{owned(fv["title"]), owned(fv["value"])});
+        a.fields.push_back({owned(fv["title"]), owned(fv["value"]), fv["short"].boolean()});
     a.linkPreview = o["linkPreview"].boolean(!a.link.empty() && a.fields.empty());
     return a;
 }

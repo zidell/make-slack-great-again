@@ -8,6 +8,7 @@
 #include "app/screens/common/message_text.h"
 #include "app/screens/common/tag_badge.h"
 #include "app/screens/messages/audio_card.h"
+#include "app/screens/messages/attachment_fields.h"
 #include "app/screens/messages/doc_viewer.h"
 #include "app/screens/messages/rich.h"
 #include "app/screens/messages/table_view.h"
@@ -1610,10 +1611,11 @@ void MessageRow::buildAttachment(ui::View *col, const model::Message &m, size_t 
             more->onLink = [this, ts = m.ts, key](uint32_t) { _list.toggleUnfurl(ts, key); };
         }
     }
-    for (const model::AttachmentField &fl : a.fields) {
-        c->add<ui::Label>(fl.title, Font::SmallBold, C::Text)->style().margins(0, 4, 0, 0);
-        buildBody(ctx, c, fl.value, {}, this);
-    }
+    buildAttachmentFields(c, a.fields, [&](ui::View *cell, const model::AttachmentField &fl) {
+        if (!fl.title.empty())
+            cell->add<ui::Label>(fl.title, Font::SmallBold, C::Text);
+        buildBody(ctx, cell, fl.value, {}, this);
+    });
     // An attachment's blocks are drawn when nothing above said anything.
     if (a.title.empty() && a.text.empty() && a.fields.empty() && a.author.empty() &&
         !a.blocks.empty())

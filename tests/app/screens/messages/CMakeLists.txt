@@ -9,3 +9,5 @@ endforeach()
 # The fork's: the document viewer's file kinds and Markdown parts.
 target_sources(msga_app_tests PRIVATE test_doc_viewer.cpp)
 msga_add_test(messages_doc_viewer COMMAND msga_app_tests test_doc_viewer LABELS messages)
+target_sources(msga_app_tests PRIVATE test_attachment_fields.cpp)
+msga_add_test(messages_attachment_fields COMMAND msga_app_tests test_attachment_fields LABELS messages)

@@ -277,6 +277,7 @@ void fields(IO &io, model::File &f) {
 void fields(IO &io, model::AttachmentField &f) {
     io.str(f.title);
     io.str(f.value);
+    io.flags({&f.shortField});
 }
 
 void fields(IO &io, model::Block &b) {

@@ -629,7 +629,7 @@ model::Attachment toAttachment(const Value &o) {
         a.imageHeight = int32_t(o["thumb_height"].integer());
     }
     for (const Value f : o["fields"])
-        a.fields.push_back({owned(f["title"]), owned(f["value"])});
+        a.fields.push_back({owned(f["title"]), owned(f["value"]), f["short"].boolean()});
     a.id        = int32_t(o["id"].integer());
     a.msgUnfurl = o["is_msg_unfurl"].boolean();
     if (a.msgUnfurl) {

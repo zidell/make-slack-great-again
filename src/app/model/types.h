@@ -127,6 +127,7 @@ struct File {
 struct AttachmentField {
     std::string title;
     std::string value; // mrkdwn
+    bool        shortField = false; // pair adjacent short fields in two columns
     bool        operator==(const AttachmentField &) const;
 };
 
