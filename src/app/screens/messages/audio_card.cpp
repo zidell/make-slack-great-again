@@ -1,4 +1,5 @@
 #include "app/screens/messages/audio_card.h"
+#include "app/screens/messages/media_viewer.h"
 
 #include "app/llm/audio_transcriber.h"
 #include "app/llm/service.h"
@@ -644,6 +645,8 @@ addAudioCard(ui::View *parent, Context &ctx, MessageList *list, Ts ts, const mod
 }
 
 void toggleAudio(Context &ctx, const model::File &f) {
+    if (showMediaViewer(ctx, f))
+        return;
     if (!ctx.audio)
         return;
     AudioPlayer &player = *ctx.audio;

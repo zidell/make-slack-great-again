@@ -2,6 +2,11 @@
 # the binary smaller; opt a hot file into -O2 locally, never globally.
 cmake_minimum_required(VERSION 3.21)
 project(msga LANGUAGES C CXX)
+if(APPLE)
+    enable_language(OBJCXX)
+    set(CMAKE_OBJCXX_STANDARD 20)
+    set(CMAKE_OBJCXX_STANDARD_REQUIRED ON)
+endif()
 # Each static library once on a link line where the linker resolves them in
 # any order (Apple's ld warns about the repeats).
 if(POLICY CMP0156)

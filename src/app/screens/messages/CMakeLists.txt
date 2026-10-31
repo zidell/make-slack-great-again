@@ -18,6 +18,11 @@ add_library(msga_screens_messages STATIC
 # The fork's: .md / .txt files read in place (doc_viewer.h), Markdown rendered
 # as Claude Code's answers are.
 target_sources(msga_screens_messages PRIVATE doc_viewer.cpp)
+if(APPLE)
+    target_sources(msga_screens_messages PRIVATE media_viewer_cocoa.mm)
+    set_source_files_properties(media_viewer_cocoa.mm PROPERTIES COMPILE_OPTIONS "-fobjc-arc")
+    target_link_libraries(msga_screens_messages PRIVATE "-framework AVKit")
+endif()
 # The scroll torture test (msga --debug-scroll): demo workspace only.
 if(MSGA_DEMO)
     target_sources(msga_screens_messages PRIVATE debug_scroll.cpp)
