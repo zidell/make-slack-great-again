@@ -29,6 +29,19 @@ NSWindow *playerWindow() {
             return w;
     return nil;
 }
+
+NSEvent *closeKey(NSWindow *window, NSEventModifierFlags extra = 0) {
+    return [NSEvent keyEventWithType:NSEventTypeKeyDown
+                            location:NSZeroPoint
+                       modifierFlags:NSEventModifierFlagCommand | extra
+                           timestamp:0
+                        windowNumber:window.windowNumber
+                             context:nil
+                          characters:@"w"
+         charactersIgnoringModifiers:@"w"
+                           isARepeat:NO
+                             keyCode:13];
+}
 } // namespace
 
 TEST("media viewer: closed and replaced downloads never play and remove their copies") {
@@ -52,7 +65,10 @@ TEST("media viewer: closed and replaced downloads never play and remove their co
     REQUIRE(backend.pending.size() == 1);
     NSWindow *first = playerWindow();
     REQUIRE(first != nil);
-    [first close];
+    CHECK_FALSE([first performKeyEquivalent:closeKey(first, NSEventModifierFlagControl)]);
+    CHECK(first.visible);
+    [NSApp sendEvent:closeKey(first)];
+    CHECK_FALSE(first.visible);
     auto &one = backend.pending[0];
     REQUIRE(file::writeAtomic(one.path, "invalid media"));
     one.done(true, {});
@@ -105,7 +121,8 @@ TEST("media viewer: closed and replaced downloads never play and remove their co
            deadline.timeIntervalSinceNow > 0)
         [NSRunLoop.currentRunLoop runUntilDate:[NSDate dateWithTimeIntervalSinceNow:0.01]];
     CHECK(view.player.currentItem.status == AVPlayerItemStatusReadyToPlay);
-    [playing close];
+    CHECK([playing performKeyEquivalent:closeKey(playing)]);
+    CHECK_FALSE(playing.visible);
     CHECK(view.player == nil);
     CHECK(file::exists(local)); // closing must only remove downloaded copies
     screens::removeTempDownload(local);

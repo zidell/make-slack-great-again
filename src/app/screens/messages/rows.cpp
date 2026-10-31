@@ -11,6 +11,7 @@
 #include "app/screens/messages/attachment_fields.h"
 #include "app/screens/messages/doc_viewer.h"
 #include "app/screens/messages/media_viewer.h"
+#include "app/screens/messages/media_preview.h"
 #include "app/screens/messages/rich.h"
 #include "app/screens/messages/table_view.h"
 #include "base/file.h"
@@ -157,7 +158,7 @@ private:
 
 // A picture shown inline (a canvas is a card).
 bool isInlinePreview(const model::File &f) {
-    return f.hasPreview() && !(f.isCanvas() && !f.id.empty());
+    return hasFilePreview(f) && !(f.isCanvas() && !f.id.empty());
 }
 
 // The multi-image gallery (2+ previews): equal
@@ -1458,7 +1459,7 @@ void MessageRow::buildGallery(ui::View *col, const std::vector<const model::File
     auto *g = col->add<Gallery>();
     g->style().alignSelf(Align::Start).margins(0, 6, 0, 2);
     for (const model::File *f : files) {
-        const std::string &src = f->isImage() ? f->path : f->thumb;
+        const std::string &src = filePreviewPath(*f);
         auto              *t   = g->add<Thumb>(
             _list,
             src,
@@ -1484,7 +1485,7 @@ void MessageRow::buildFile(ui::View *col, const model::File &f, Ts ts) {
         col->add<CanvasCard>(_list, f)->style().alignSelf(Align::Start).margins(0, 6, 0, 2);
         return;
     }
-    if (f.hasPreview()) {
+    if (hasFilePreview(f)) {
         // The name in a 14-px band right above the picture, 0.82× in
         // fileNameDim, nothing else (the file bar does the rest). A PDF
         // shows its first page; the viewer opens on the file either way.
@@ -1493,9 +1494,9 @@ void MessageRow::buildFile(ui::View *col, const model::File &f, Ts ts) {
         auto *name = ui::styledLabel(col, f.name, st, 1);
         name->style().height(14).margins(0, 6, 0, 0);
         name->setLineHeight(1.0f);
-        auto             *img  = static_cast<Thumb *>(addThumb(
-            col, f.isImage() ? f.path : f.thumb, f.width, f.height, kImgMaxW, kImgMaxH, 0, true
-        ));
+        auto *img = static_cast<Thumb *>(
+            addThumb(col, filePreviewPath(f), f.width, f.height, kImgMaxW, kImgMaxH, 0, true)
+        );
         const Ts          msg  = _ts;
         const std::string path = f.path;
         img->key               = path;

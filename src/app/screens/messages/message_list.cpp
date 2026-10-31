@@ -1,4 +1,5 @@
 #include "app/screens/messages/message_list.h"
+#include "app/screens/messages/media_viewer.h"
 
 #include "app/identity.h"
 #include "app/model/jobs.h"
@@ -2606,8 +2607,11 @@ void MessageList::toggleUnfurl(Ts ts, int attachment) {
 }
 
 void MessageList::openFileViewer(Ts ts, const std::string &path) {
-    if (const model::File *f = fileAt(message(ts), path); f && window())
+    if (const model::File *f = fileAt(message(ts), path); f && window()) {
+        if (showMediaViewer(_ctx, *f))
+            return;
         showFileViewer(_ctx, *window(), this, ts, *f);
+    }
 }
 
 void MessageList::openCanvas(const model::File &f) {

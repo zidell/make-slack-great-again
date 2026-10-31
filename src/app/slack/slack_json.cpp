@@ -2,6 +2,7 @@
 // mrkdwn, so Block Kit blocks that say more than its text become the
 // equivalent mrkdwn once, at mapping time.
 #include "app/slack/slack_json.h"
+#include "app/slack/media_previews.h"
 
 #include "app/mrkdwn/mrkdwn.h"
 #include "base/i18n.h"
@@ -588,6 +589,7 @@ File toFile(const Value &o) {
     }
     if (f.isCanvas())
         f.title = mrkdwn::decodeEntities(o["title"].str()); // entity-escaped
+    readMediaPreview(o, f);
     if (f.original == f.path)
         f.original.clear(); // source() falls back to path
     return f;

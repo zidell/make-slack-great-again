@@ -11,6 +11,8 @@ target_sources(msga_app_tests PRIVATE test_doc_viewer.cpp)
 msga_add_test(messages_doc_viewer COMMAND msga_app_tests test_doc_viewer LABELS messages)
 target_sources(msga_app_tests PRIVATE test_attachment_fields.cpp)
 msga_add_test(messages_attachment_fields COMMAND msga_app_tests test_attachment_fields LABELS messages)
+target_sources(msga_app_tests PRIVATE test_media_previews.cpp)
+msga_add_test(messages_media_previews COMMAND msga_app_tests test_media_previews LABELS messages)
 if(APPLE)
     target_sources(msga_app_tests PRIVATE test_media_viewer.mm)
     set_source_files_properties(test_media_viewer.mm TARGET_DIRECTORY msga_app_tests

@@ -21,6 +21,19 @@ NSString *nativeString(const std::string &s) {
 @interface MSGAMediaWindow : NSWindow
 @end
 @implementation MSGAMediaWindow
+- (BOOL)performKeyEquivalent:(NSEvent *)event {
+    const NSEventModifierFlags modifiers =
+        event.modifierFlags & NSEventModifierFlagDeviceIndependentFlagsMask;
+    if (event.type == NSEventTypeKeyDown &&
+        (modifiers & (NSEventModifierFlagCommand | NSEventModifierFlagOption |
+                      NSEventModifierFlagControl | NSEventModifierFlagShift)) ==
+            NSEventModifierFlagCommand &&
+        [event.charactersIgnoringModifiers.lowercaseString isEqualToString:@"w"]) {
+        [self performClose:nil];
+        return YES;
+    }
+    return [super performKeyEquivalent:event];
+}
 - (void)cancelOperation:(id)sender {
     [self close];
 }
