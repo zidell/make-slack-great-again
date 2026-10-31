@@ -42,6 +42,13 @@ NSEvent *closeKey(NSWindow *window, NSEventModifierFlags extra = 0) {
                            isARepeat:NO
                              keyCode:13];
 }
+
+NSView *statusView(NSWindow *window, NSString *identifier) {
+    for (NSView *v in window.contentView.subviews)
+        if ([v.identifier isEqualToString:identifier])
+            return v;
+    return nil;
+}
 } // namespace
 
 TEST("media viewer: closed and replaced downloads never play and remove their copies") {
@@ -65,6 +72,14 @@ TEST("media viewer: closed and replaced downloads never play and remove their co
     REQUIRE(backend.pending.size() == 1);
     NSWindow *first = playerWindow();
     REQUIRE(first != nil);
+    NSTextField         *downloadStatus = (NSTextField *)statusView(first, @"media-status");
+    NSProgressIndicator *downloadProgress =
+        (NSProgressIndicator *)statusView(first, @"media-progress");
+    REQUIRE(downloadStatus != nil);
+    REQUIRE(downloadProgress != nil);
+    CHECK([downloadStatus.stringValue isEqualToString:@"Downloading video.mp4"]);
+    CHECK_FALSE(downloadProgress.hidden);
+    CHECK(downloadProgress.indeterminate);
     CHECK_FALSE([first performKeyEquivalent:closeKey(first, NSEventModifierFlagControl)]);
     CHECK(first.visible);
     [NSApp sendEvent:closeKey(first)];
@@ -97,6 +112,9 @@ TEST("media viewer: closed and replaced downloads never play and remove their co
     // A download failure stays in the viewer, without creating a player.
     auto &three = backend.pending[2];
     three.done(false, "download failed");
+    CHECK([((NSTextField *)statusView(third, @"media-status")).stringValue
+        isEqualToString:@"download failed"]);
+    CHECK(statusView(third, @"media-progress").hidden);
     CHECK_FALSE(file::exists(file::dirName(three.path)));
     CHECK(((AVPlayerView *)third.contentView).player == nil);
     CHECK(model::jobs().count() == jobsBefore);
@@ -121,6 +139,10 @@ TEST("media viewer: closed and replaced downloads never play and remove their co
            deadline.timeIntervalSinceNow > 0)
         [NSRunLoop.currentRunLoop runUntilDate:[NSDate dateWithTimeIntervalSinceNow:0.01]];
     CHECK(view.player.currentItem.status == AVPlayerItemStatusReadyToPlay);
+    // The observer posts the transition to the UI queue.
+    [NSRunLoop.currentRunLoop runUntilDate:[NSDate dateWithTimeIntervalSinceNow:0.05]];
+    CHECK(statusView(playing, @"media-status").hidden);
+    CHECK(statusView(playing, @"media-progress").hidden);
     CHECK([playing performKeyEquivalent:closeKey(playing)]);
     CHECK_FALSE(playing.visible);
     CHECK(view.player == nil);

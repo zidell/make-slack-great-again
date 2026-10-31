@@ -39,20 +39,32 @@ NSString *nativeString(const std::string &s) {
 }
 @end
 
-@interface                                    MSGAMediaViewer : NSObject <NSWindowDelegate>
-@property(nonatomic, strong) MSGAMediaWindow *window;
-@property(nonatomic, strong) AVPlayerView    *view;
-@property(nonatomic, strong) NSTextField     *status;
-@property(nonatomic, strong) AVPlayerItem    *item;
-@property(nonatomic, copy) NSString          *temporaryPath;
-@property(nonatomic) BOOL                     closed;
+@interface                                        MSGAMediaViewer : NSObject <NSWindowDelegate>
+@property(nonatomic, strong) MSGAMediaWindow     *window;
+@property(nonatomic, strong) AVPlayerView        *view;
+@property(nonatomic, strong) NSTextField         *status;
+@property(nonatomic, strong) NSProgressIndicator *progress;
+@property(nonatomic, strong) AVPlayerItem        *item;
+@property(nonatomic, copy) NSString              *temporaryPath;
+@property(nonatomic) BOOL                         closed;
 - (void)loadPath:(const std::string &)path;
+- (void)setStatus:(NSString *)text busy:(BOOL)busy;
 @end
 
 @implementation MSGAMediaViewer
+- (void)setStatus:(NSString *)text busy:(BOOL)busy {
+    self.status.stringValue = text;
+    self.status.hidden      = NO;
+    self.progress.hidden    = !busy;
+    if (busy)
+        [self.progress startAnimation:nil];
+    else
+        [self.progress stopAnimation:nil];
+}
 - (void)loadPath:(const std::string &)path {
     if (self.closed)
         return;
+    [self setStatus:nativeString(i18n::tr("Loading\xE2\x80\xA6")) busy:YES];
     self.item = [AVPlayerItem playerItemWithURL:[NSURL fileURLWithPath:nativeString(path)]];
     [self.item addObserver:self
                 forKeyPath:@"status"
@@ -70,15 +82,18 @@ NSString *nativeString(const std::string &s) {
           return;
       if (self.item.status == AVPlayerItemStatusReadyToPlay) {
           self.status.hidden = YES;
+          [self.progress stopAnimation:nil];
+          self.progress.hidden = YES;
       } else if (self.item.status == AVPlayerItemStatusFailed) {
-          self.status.stringValue = self.item.error.localizedDescription
-                                        ?: nativeString(i18n::tr("Could not read the file."));
-          self.status.hidden      = NO;
+          [self setStatus:self.item.error.localizedDescription
+                              ?: nativeString(i18n::tr("Could not read the file."))
+                     busy:NO];
       }
     });
 }
 - (void)windowWillClose:(NSNotification *)notification {
     self.closed = YES;
+    [self.progress stopAnimation:nil];
     [self.view.player pause];
     self.view.player = nil;
     if (self.item) {
@@ -125,11 +140,23 @@ bool showMediaViewer(Context &ctx, const model::File &f) {
     viewer.window.contentView    = viewer.view;
     viewer.status =
         [NSTextField wrappingLabelWithString:nativeString(i18n::tr("Loading\xE2\x80\xA6"))];
-    viewer.status.textColor        = NSColor.whiteColor;
-    viewer.status.alignment        = NSTextAlignmentCenter;
-    viewer.status.frame            = NSInsetRect(viewer.view.bounds, 24, audio ? 48 : 150);
+    viewer.status.textColor  = NSColor.whiteColor;
+    viewer.status.identifier = @"media-status";
+    viewer.status.alignment  = NSTextAlignmentCenter;
+    const NSRect bounds      = viewer.view.bounds;
+    viewer.status.frame      = NSMakeRect(24, NSMidY(bounds) - 48, bounds.size.width - 48, 48);
     viewer.status.autoresizingMask = NSViewWidthSizable | NSViewMinYMargin | NSViewMaxYMargin;
     [viewer.view addSubview:viewer.status];
+    viewer.progress               = [[NSProgressIndicator alloc]
+        initWithFrame:NSMakeRect(NSMidX(bounds) - 12, NSMidY(bounds) + 12, 24, 24)];
+    viewer.progress.identifier    = @"media-progress";
+    viewer.progress.style         = NSProgressIndicatorStyleSpinning;
+    viewer.progress.appearance    = [NSAppearance appearanceNamed:NSAppearanceNameDarkAqua];
+    viewer.progress.indeterminate = YES;
+    viewer.progress.autoresizingMask =
+        NSViewMinXMargin | NSViewMaxXMargin | NSViewMinYMargin | NSViewMaxYMargin;
+    [viewer.view addSubview:viewer.progress];
+    [viewer setStatus:viewer.status.stringValue busy:YES];
     NSWindow *parent = (__bridge NSWindow *)ctx.window->native().nativeHandle();
     NSRect    frame  = viewer.window.frame;
     [viewer.window setFrameOrigin:NSMakePoint(
@@ -141,7 +168,7 @@ bool showMediaViewer(Context &ctx, const model::File &f) {
     // Voice clips prefer Slack's AAC transcode; videos use the original.
     const std::string source = audio && ctx.audio ? ctx.audio->sourceFor(f) : f.source();
     if (source.empty()) {
-        viewer.status.stringValue = nativeString(i18n::tr("Could not read the file."));
+        [viewer setStatus:nativeString(i18n::tr("Could not read the file.")) busy:NO];
         return true;
     }
     if (!RemoteImages::isRemote(source)) {
@@ -151,10 +178,12 @@ bool showMediaViewer(Context &ctx, const model::File &f) {
     const std::string path =
         tempDownloadPath(ctx.app.platform(), f.name.empty() ? "media" : f.name);
     if (path.empty()) {
-        viewer.status.stringValue = nativeString(i18n::tr("Could not read the file."));
+        [viewer setStatus:nativeString(i18n::tr("Could not read the file.")) busy:NO];
         return true;
     }
-    const int job = model::jobs().begin(i18n::arg(i18n::tr("Downloading %1"), f.name));
+    const std::string downloading = i18n::arg(i18n::tr("Downloading %1"), f.name);
+    [viewer setStatus:nativeString(downloading) busy:YES];
+    const int job = model::jobs().begin(downloading);
     fetchFile(
         ctx.app.platform(),
         ctx.backend,
@@ -165,8 +194,11 @@ bool showMediaViewer(Context &ctx, const model::File &f) {
             if (viewer.closed || !ok) {
                 removeTempDownload(path);
                 if (!viewer.closed)
-                    viewer.status.stringValue =
-                        nativeString(error.empty() ? i18n::tr("Could not read the file.") : error);
+                    [viewer
+                        setStatus:nativeString(
+                                      error.empty() ? i18n::tr("Could not read the file.") : error
+                                  )
+                             busy:NO];
                 return;
             }
             viewer.temporaryPath = nativeString(path);
