@@ -560,6 +560,7 @@ void SettingsDialog::buildAppearance() {
         );
     }
 
+#ifndef __APPLE__ // fork: no menu bar icon on macOS (fork_no_menubar.h)
     heading(_content, tr("Tray icon"));
     {
         auto *g      = group(_content);
@@ -581,6 +582,7 @@ void SettingsDialog::buildAppearance() {
             changed();
         };
     }
+#endif
 
     saveButton(&SettingsDialog::saveAppearance);
 }

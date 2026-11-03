@@ -20,6 +20,7 @@
 #include "screens/shell/channel_dialogs.h"
 #include "screens/shell/channel_tint.h"
 #include "screens/shell/context_menus.h"
+#include "screens/shell/fork_no_menubar.h"
 #include "screens/shell/header.h"
 #include "screens/shell/huddle_banner.h"
 #include "screens/shell/message_search.h"
@@ -991,7 +992,8 @@ Shell::Shell(screens::Context &ctx, Window &win, Settings &settings, std::string
     };
 
     win.native().setHitTest([this](plat::Point p) { return hitTest(p); });
-    _tray = ctx.app.platform().createTray();
+    if (!fork::noMenuBarTray(ctx.app.platform()))
+        _tray = ctx.app.platform().createTray();
     if (_tray) {
         _tray->setTooltip("MSGA");
         rebuildTrayMenu();
@@ -2331,7 +2333,7 @@ void Shell::minimize() {
 }
 
 bool Shell::hideWindow() {
-    if (!_tray || !_tray->isVisible())
+    if ((!_tray || !_tray->isVisible()) && !fork::noMenuBarTray(_ctx.app.platform()))
         return false;
     saveState();
     _hiddenMaximized = _win.native().isMaximized();
