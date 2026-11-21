@@ -513,7 +513,8 @@ bool Menu::onEvent(Event &e) {
             const MenuItem &it          = _items[i];
             if (!selectable(it) || it.hint.empty())
                 continue;
-            if (hintKey(it.hint, &needPrimary) == e.key && needPrimary == primary) {
+            const auto key = e.key == plat::Key::Backspace ? plat::Key::Delete : e.key;
+            if (hintKey(it.hint, &needPrimary) == key && needPrimary == primary) {
                 choose(int(i));
                 return true;
             }
