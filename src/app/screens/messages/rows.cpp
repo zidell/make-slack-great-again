@@ -14,6 +14,7 @@
 #include "app/screens/messages/media_preview.h"
 #include "app/screens/messages/rich.h"
 #include "app/screens/messages/table_view.h"
+#include "app/screens/messages/text_scaled.h"
 #include "base/file.h"
 #include "base/i18n.h"
 #include "base/str.h"
@@ -35,12 +36,12 @@ using ui::Font;
 namespace {
 
 // Message list metrics.
-constexpr float kPadH = 16, kPadV = 8, kPadVBottom = 4, kPadVGrouped = 3;
-constexpr float kAvSize = 36, kAvGap = 10, kHdrH = 20, kReactGap = 6;
+constexpr float  kPadH = 16, kAvSize = 36, kAvGap = 10;
+constexpr Scaled kPadV{8}, kPadVBottom{4}, kPadVGrouped{3}, kHdrH{20}, kReactGap{6};
 constexpr float kThreadAv = 24, kImgMax = 360, kAttachBar = 4;
 // Inline images at most 400 × 300.
 constexpr int   kImgMaxW = 400, kImgMaxH = 300;
-constexpr float kBannerH = 18; // the mini-banner rows
+constexpr Scaled kBannerH{18}; // the mini-banner rows
 
 // Pinned background, dismiss icon, reminder background, reminder text.
 constexpr C kBannerColors[4] = {C::PinnedBg, C::FormIcon, C::ReminderBg, C::FormLink};
@@ -876,7 +877,7 @@ class ReplyBar final : public ui::Clickable {
 public:
     ReplyBar(MessageList &list, const model::Message &m) : _list(list), _ts(m.ts) {
         setLook({C::None, C::None, C::None, C::None, 6});
-        style().row().height(36).padding(6, 0, 6, 0).spacing(6).items(Align::Center);
+        style().row().height(textScaled(36)).padding(6, 0, 6, 0).spacing(6).items(Align::Center);
         Context     &ctx = list.ctx();
         const Store &st  = ctx.store;
         auto        *avs = add<ui::View>();
@@ -950,7 +951,7 @@ class FooterLink final : public ui::Clickable {
 public:
     explicit FooterLink(std::string text) : _text(std::move(text)) {
         setLook({C::None, C::None, C::None, C::None, 0});
-        style().height(24).margins(0, 6, 0, 6).alignSelf(Align::Start).stack().items(Align::Center);
+        style().height(textScaled(24)).margins(0, 6, 0, 6).alignSelf(Align::Start).stack().items(Align::Center);
         _l = add<ui::Label>();
         _l->setHitTransparent(true);
         setText(false);
@@ -1051,11 +1052,16 @@ void FlowRow::layout() {
 // ── Day / divider rows ──────────────────────────────────────────────────────
 
 DayRow::DayRow() {
-    style().stack().height(32).items(Align::Center);
+    style().stack().height(textScaled(32)).items(Align::Center);
     _label = add<ui::Label>("", Font::SmallBold, C::Text);
     _label->setBorder(C::Border);
     _label->setBackground(C::Surface, 12);
     _label->style().padding(12, 3);
+}
+
+void DayRow::styleChanged() {
+    View::styleChanged();
+    style().height(textScaled(32));
 }
 
 void DayRow::paint(gfx::Painter &p) {
@@ -1162,7 +1168,7 @@ bool MessageRow::reuse() {
 
 void MessageRow::buildSystem(const model::Message &m) {
     Context &ctx = _list.ctx();
-    style().row().padding(kPadH, 6, kPadH, 6).spacing(kAvGap).items(Align::Center);
+    style().row().padding(kPadH, textScaled(6), kPadH, textScaled(6)).spacing(kAvGap).items(Align::Center);
     auto *gutter = add<ui::View>();
     gutter->style().size(kAvSize, 20).stack().items(Align::End);
     auto *av = gutter->add<CachedImage>(
@@ -1492,7 +1498,7 @@ void MessageRow::buildFile(ui::View *col, const model::File &f, Ts ts) {
         const text::Style st =
             ui::pxFont(15 * 0.82f, text::Weight::Regular, ui::color(C::FileNameDim));
         auto *name = ui::styledLabel(col, f.name, st, 1);
-        name->style().height(14).margins(0, 6, 0, 0);
+        name->style().height(textScaled(14)).margins(0, 6, 0, 0);
         name->setLineHeight(1.0f);
         auto *img = static_cast<Thumb *>(
             addThumb(col, filePreviewPath(f), f.width, f.height, kImgMaxW, kImgMaxH, 0, true)
@@ -1730,7 +1736,7 @@ void MessageRow::buildReactions(ui::View *col, const model::Message &m) {
             pill->setBackground(C::None, 12);
             pill->setBorder(C::Link);
         }
-        pill->style().row().height(24).padding(8, 0).spacing(4).items(Align::Center);
+        pill->style().row().height(textScaled(24)).padding(8, 0).spacing(4).items(Align::Center);
         const Store::EmojiGlyph g = st.emojiFor(r.name);
         if (!g.image.empty()) {
             // Animated custom emoji play here too (Settings → Animate emoji).
@@ -1782,7 +1788,7 @@ void MessageRow::buildInlineThread(ui::View *col, const model::Message &root) {
             tr("Loading replies\xE2\x80\xA6"),
             ui::pxFont(15 * 0.9f, text::Weight::Regular, ui::themed(C::TextMuted))
         );
-        l->style().height(28);
+        l->style().height(textScaled(28));
     } else {
         const model::Message *prev = nullptr;
         for (const model::Message &r : *replies) {
@@ -1901,7 +1907,7 @@ void MessageRow::paint(gfx::Painter &p) {
             bannerColor(3),
             by
         );
-    by += _savedText.empty() ? 0 : kBannerH;
+    by += _savedText.empty() ? 0.f : float(kBannerH);
     if (!_hoverTime.empty() && (hovered() || _list.toolbarRow() == this)) {
         if (!_hoverLayout) // a time: one line
             _hoverLayout =

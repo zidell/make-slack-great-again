@@ -501,6 +501,10 @@ public:
         label->style().width(w);
         style().width(10 + 15 + 6 + w + 10);
     }
+    void styleChanged() override { // a new text size: measured again
+        Clickable::styleChanged();
+        fit();
+    }
     void setActive(bool on) {
         active = on;
         label->setFont(on ? Font::TabBold : Font::Control);

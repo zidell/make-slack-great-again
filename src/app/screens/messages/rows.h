@@ -174,6 +174,7 @@ public:
     DayRow();
     void setText(std::string s) { _label->setText(std::move(s)); }
     void paint(gfx::Painter &p) override;
+    void styleChanged() override; // its height follows the text size
 
 private:
     ui::Label *_label;

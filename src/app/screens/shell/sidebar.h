@@ -185,6 +185,7 @@ public:
     SidebarFooter &footer() { return *_footer; }
 
     void paint(gfx::Painter &p) override; // the nav gradient
+    void styleChanged() override;         // a new text size: the rows again, at its height
 
 private:
     friend class ConvRow;
@@ -254,6 +255,7 @@ private:
     uint64_t                 _shapeProfileRev = 0, _shapeTextRev = 0;
     model::UserRef           _shapeMe         = model::kNoUser;
     int                      _rebuilds        = 0;
+    float                    _boundTextScale  = 0; // the userTextScale the rows were built at
     bool                     _revealOnRebuild = false;
     int                      _hiddenChannels  = 0;
     bool                     _collapsed[5]    = {}; // starred, channels, DMs, apps, team

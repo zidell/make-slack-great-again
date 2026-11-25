@@ -965,6 +965,7 @@ void Sidebar::rebuild() {
     _footer->refresh();
     noteShape(userShape());
     ++_rebuilds;
+    _boundTextScale = app() ? app()->userTextScale() : 1.f;
     invalidateLayout();
 }
 
@@ -1088,6 +1089,14 @@ void Sidebar::applyCollapse(SectionHeader *h) {
 void Sidebar::showAllChannels() {
     _showAllChannels = true;
     rebuildSoon(); // not from inside the row's own click
+}
+
+void Sidebar::styleChanged() {
+    View::styleChanged();
+    // The rows take rowH() when built: Ctrl +/- builds them again (in place,
+    // the list scrolled where it was).
+    if (_boundTextScale != 0 && _boundTextScale != (app() ? app()->userTextScale() : 1.f))
+        rebuildSoon(false);
 }
 
 void Sidebar::rebuildSoon(bool reveal) {

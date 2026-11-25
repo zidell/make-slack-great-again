@@ -21,3 +21,7 @@ msga_add_test(channel_tint_tests COMMAND msga_app_tests test_channel_tint TZ HOM
 target_sources(msga_app_tests PRIVATE test_identity.cpp)
 msga_add_test(identity_tests COMMAND msga_app_tests test_identity
     HOME ${CMAKE_CURRENT_BINARY_DIR}/test-home-identity LABELS shell)
+
+# The fork's: Ctrl +/- re-measures the sidebar rows and conversation tabs.
+target_sources(msga_app_tests PRIVATE test_text_size.cpp)
+msga_add_test(text_size_tests COMMAND msga_app_tests test_text_size TZ HOME ${_home} LABELS shell)

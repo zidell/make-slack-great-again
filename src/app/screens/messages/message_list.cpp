@@ -1,5 +1,6 @@
 #include "app/screens/messages/message_list.h"
 #include "app/screens/messages/media_viewer.h"
+#include "app/screens/messages/text_scaled.h"
 
 #include "app/identity.h"
 #include "app/model/jobs.h"
@@ -42,7 +43,7 @@ using Kind = MessageList::ItemKind;
 
 namespace {
 
-constexpr float  kTypingH        = 22;
+constexpr Scaled kTypingH{22};
 constexpr int    kEdgeDelayMs    = 60;
 // Canvas previews kept for cards scrolled back to (the HTML of each).
 constexpr size_t kCanvasPreviews = 16;
@@ -1220,7 +1221,7 @@ void MessageList::updateTyping() {
 }
 
 void MessageList::setTypingRow(bool on) {
-    _typingH = on ? kTypingH : 0;
+    _typingH = on ? float(kTypingH) : 0.f;
     _typing->setVisible(on);
     invalidateLayout();
 }

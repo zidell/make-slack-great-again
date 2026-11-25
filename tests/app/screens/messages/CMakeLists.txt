@@ -19,3 +19,6 @@ if(APPLE)
         PROPERTIES COMPILE_OPTIONS "-fobjc-arc;-fno-rtti;-fno-exceptions")
     msga_add_test(messages_media_viewer COMMAND msga_app_tests test_media_viewer LABELS messages)
 endif()
+# The fork's: gaps and text rows' heights follow the text size.
+target_sources(msga_app_tests PRIVATE test_text_scaled.cpp)
+msga_add_test(messages_text_scaled COMMAND msga_app_tests test_text_scaled LABELS messages)
